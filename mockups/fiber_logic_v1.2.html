@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>IDT Fiber Engine — Logic Diagram v1.2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0A0A0A; color: #fff; font-family: 'Inter', sans-serif; padding: 40px; }
+  h1 { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; letter-spacing: 0.2em; color: #4080D0; margin-bottom: 4px; }
+  h2 { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.15em; color: rgba(255,255,255,0.4); margin-bottom: 24px; }
+  .section { margin-bottom: 48px; }
+  .section-title { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.15em; color: #4080D0; padding: 8px 14px; background: rgba(64,128,208,0.08); border: 1px solid rgba(64,128,208,0.2); border-radius: 6px; display: inline-block; margin-bottom: 20px; }
+  .row { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; padding: 16px 20px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; }
+  .cam-box { min-width: 140px; padding: 8px 14px; border-radius: 6px; border: 1.5px solid rgba(64,128,208,0.3); background: rgba(64,128,208,0.05); text-align: center; }
+  .cam-name { font-size: 13px; font-weight: 600; }
+  .cam-sub { font-size: 10px; color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+  .proc-box { min-width: 140px; padding: 8px 14px; border-radius: 6px; border: 1.5px solid rgba(64,128,208,0.3); background: rgba(64,128,208,0.05); text-align: center; }
+  .proc-name { font-size: 13px; font-weight: 600; }
+  .proc-sub { font-size: 10px; color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+  .cable-zone { flex: 1; position: relative; height: 60px; }
+  .fps-box { min-width: 120px; padding: 8px 14px; border-radius: 6px; text-align: right; }
+  .fps-value { font-size: 22px; font-weight: 200; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.02em; }
+  .fps-label { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+  .fps-full { color: #40A858; }
+  .fps-half { color: #CC4444; }
+  .mode-badge { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; font-family: 'JetBrains Mono', monospace; padding: 3px 8px; border-radius: 3px; display: inline-block; margin-right: 6px; }
+  .mode-dual { background: rgba(64,128,208,0.15); border: 1px solid rgba(64,128,208,0.3); color: #4080D0; }
+  .mode-single { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); }
+  .mode-blocked { background: rgba(220,50,50,0.1); border: 1px solid rgba(220,50,50,0.25); color: #D94040; }
+  .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 32px 0; }
+  .matrix { border-collapse: collapse; width: 100%; }
+  .matrix th, .matrix td { padding: 8px 12px; text-align: center; font-size: 11px; font-family: 'JetBrains Mono', monospace; border: 1px solid rgba(255,255,255,0.06); }
+  .matrix th { background: rgba(64,128,208,0.08); color: #4080D0; font-weight: 700; letter-spacing: 0.08em; font-size: 10px; }
+  .matrix td { color: rgba(255,255,255,0.7); }
+  .matrix .dual { color: #4080D0; font-weight: 600; }
+  .matrix .half { color: #CC4444; }
+  .matrix .full { color: #40A858; }
+  .matrix .blocked { color: #D94040; font-weight: 700; }
+  .note { font-size: 10px; color: rgba(255,255,255,0.35); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em; margin-top: 4px; }
+  .legend { display: flex; gap: 20px; margin-top: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 10px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.5); }
+  .legend-line { width: 30px; height: 3px; border-radius: 2px; }
+  .procs-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 16px; }
+  .proc-card { padding: 14px; border-radius: 8px; border: 1px solid rgba(64,128,208,0.15); background: rgba(64,128,208,0.03); text-align: center; }
+  .proc-card-name { font-size: 14px; font-weight: 600; color: #4080D0; }
+  .proc-card-ports { font-size: 28px; font-weight: 200; color: rgba(255,255,255,0.8); font-family: 'JetBrains Mono', monospace; margin: 4px 0; }
+  .proc-card-label { font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.3); letter-spacing: 0.12em; font-family: 'JetBrains Mono', monospace; }
+  .rule-box { padding: 16px 20px; border-radius: 8px; border: 1px solid; margin-bottom: 12px; }
+  .rule-blue { border-color: rgba(64,128,208,0.25); background: rgba(64,128,208,0.04); }
+  .rule-red { border-color: rgba(220,50,50,0.25); background: rgba(220,50,50,0.04); }
+  .rule-green { border-color: rgba(64,168,88,0.25); background: rgba(64,168,88,0.04); }
+  .rule-title { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; font-family: 'JetBrains Mono', monospace; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+
+<h1>IDT FIBER ENGINE — LOGIC DIAGRAM</h1>
+<h2>v1.2 — CAMERA × PROCESSOR × CONNECTION MODES</h2>
+
+<!-- PROCESSORS -->
+<div class="section">
+  <div class="section-title">PROCESSORS — FIBER PORTS</div>
+  <div class="procs-grid">
+    <div class="proc-card">
+      <div class="proc-card-name">RT V</div>
+      <div class="proc-card-ports">4</div>
+      <div class="proc-card-label">PORTS</div>
+      <div class="note" style="margin-top:8px">DDR 256/512/1024 MB<br>Storage 4/8/16 TB</div>
+    </div>
+    <div class="proc-card">
+      <div class="proc-card-name">RT IV Rack</div>
+      <div class="proc-card-ports">2</div>
+      <div class="proc-card-label">PORTS</div>
+      <div class="note" style="margin-top:8px">DDR 256/512/1024 MB<br>Storage 4/8/16 TB</div>
+    </div>
+    <div class="proc-card">
+      <div class="proc-card-name">RT III Compact</div>
+      <div class="proc-card-ports">1</div>
+      <div class="proc-card-label">PORT</div>
+      <div class="note" style="margin-top:8px">RAM 128 MB (fixed)<br>Storage 4/8/16 TB</div>
+    </div>
+    <div class="proc-card">
+      <div class="proc-card-name">TC II.2</div>
+      <div class="proc-card-ports">2</div>
+      <div class="proc-card-label">PORTS</div>
+      <div class="note" style="margin-top:8px">Portable</div>
+    </div>
+    <div class="proc-card">
+      <div class="proc-card-name">TC II.1</div>
+      <div class="proc-card-ports">1</div>
+      <div class="proc-card-label">PORT</div>
+      <div class="note" style="margin-top:8px">Portable</div>
+    </div>
+  </div>
+</div>
+
+<!-- DUAL-CAPABLE CAMERAS -->
+<div class="section">
+  <div class="section-title">DUAL-CAPABLE CAMERAS — Galileo, Phoenix GOLD, Phoenix HD/UHD</div>
+  <div class="note" style="margin-bottom:16px">These cameras have dual fiber connections. DUAL mode = 2 ports = FULL FPS. SINGLE mode = 1 port = HALF FPS.</div>
+
+  <!-- RT V -->
+  <div class="row">
+    <div class="cam-box"><div class="cam-name">Phoenix HD</div><div class="cam-sub">DUAL CAPABLE</div></div>
+    <div style="flex:1">
+      <svg width="100%" height="50" viewBox="0 0 400 50">
+        <line x1="0" y1="18" x2="160" y2="18" stroke="#4080D0" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="165" cy="18" r="7" fill="#0A0A0A" stroke="#4080D0" stroke-width="2"/>
+        <circle cx="165" cy="18" r="3" fill="#4080D0"/>
+        <line x1="165" y1="18" x2="280" y2="8" stroke="#4080D0" stroke-width="3"/>
+        <line x1="165" y1="18" x2="280" y2="28" stroke="#4080D0" stroke-width="3"/>
+        <rect x="280" y="2" width="8" height="12" rx="2" fill="#4080D0"/>
+        <rect x="280" y="22" width="8" height="12" rx="2" fill="#4080D0"/>
+        <text x="295" y="11" fill="#4080D0" font-size="8" font-family="JetBrains Mono" font-weight="700">P1</text>
+        <text x="295" y="31" fill="#4080D0" font-size="8" font-family="JetBrains Mono" font-weight="700">P2</text>
+        <text x="340" y="20" fill="rgba(255,255,255,0.3)" font-size="8" font-family="JetBrains Mono">+2 free</text>
+      </svg>
+      <div><span class="mode-badge mode-dual">DUAL ×1</span><span class="note">1 cam · 2 ports · 2 free</span></div>
+    </div>
+    <div class="proc-box"><div class="proc-name">RT V</div><div class="proc-sub">4 PORTS</div></div>
+    <div class="fps-box"><div class="fps-value fps-full">15,140<span style="font-size:12px">fps</span></div><div class="fps-label fps-full">FULL FPS</div></div>
+  </div>
+
+  <div class="row">
+    <div class="cam-box"><div class="cam-name">Phoenix HD ×2</div><div class="cam-sub">DUAL CAPABLE</div></div>
+    <div style="flex:1">
+      <svg width="100%" height="60" viewBox="0 0 400 60">
+        <!-- Fork 1 -->
+        <line x1="0" y1="12" x2="120" y2="12" stroke="#4080D0" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="125" cy="12" r="6" fill="#0A0A0A" stroke="#4080D0" stroke-width="2"/>
+        <line x1="125" y1="12" x2="280" y2="4" stroke="#4080D0" stroke-width="2.5"/>
+        <line x1="125" y1="12" x2="280" y2="20" stroke="#4080D0" stroke-width="2.5"/>
+        <!-- Fork 2 -->
+        <line x1="0" y1="48" x2="120" y2="48" stroke="#4080D0" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="125" cy="48" r="6" fill="#0A0A0A" stroke="#4080D0" stroke-width="2"/>
+        <line x1="125" y1="48" x2="280" y2="40" stroke="#4080D0" stroke-width="2.5"/>
+        <line x1="125" y1="48" x2="280" y2="56" stroke="#4080D0" stroke-width="2.5"/>
+        <!-- Ports -->
+        <rect x="280" y="0" width="7" height="10" rx="2" fill="#4080D0"/>
+        <rect x="280" y="15" width="7" height="10" rx="2" fill="#4080D0"/>
+        <rect x="280" y="35" width="7" height="10" rx="2" fill="#4080D0"/>
+        <rect x="280" y="50" width="7" height="10" rx="2" fill="#4080D0"/>
+        <text x="295" y="8" fill="#4080D0" font-size="7" font-family="JetBrains Mono" font-weight="700">P1</text>
+        <text x="295" y="23" fill="#4080D0" font-size="7" font-family="JetBrains Mono" font-weight="700">P2</text>
+        <text x="295" y="43" fill="#4080D0" font-size="7" font-family="JetBrains Mono" font-weight="700">P3</text>
+        <text x="295" y="58" fill="#4080D0" font-size="7" font-family="JetBrains Mono" font-weight="700">P4</text>
+      </svg>
+      <div><span class="mode-badge mode-dual">DUAL ×2</span><span class="note">2 cams · 4 ports · all used</span></div>
+    </div>
+    <div class="proc-box"><div class="proc-name">RT V</div><div class="proc-sub">4 PORTS</div></div>
+    <div class="fps-box"><div class="fps-value fps-full">15,140<span style="font-size:12px">fps</span></div><div class="fps-label fps-full">FULL FPS × 2</div></div>
+  </div>
+
+  <div class="row">
+    <div class="cam-box"><div class="cam-name">Phoenix HD ×4</div><div class="cam-sub">SINGLE EACH</div></div>
+    <div style="flex:1">
+      <svg width="100%" height="50" viewBox="0 0 400 50">
+        <line x1="0" y1="6" x2="280" y2="6" stroke="#4080D0" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+        <line x1="0" y1="18" x2="280" y2="18" stroke="#4080D0" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+        <line x1="0" y1="32" x2="280" y2="32" stroke="#4080D0" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+        <line x1="0" y1="44" x2="280" y2="44" stroke="#4080D0" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+        <rect x="280" y="1" width="7" height="10" rx="2" fill="#4080D0" opacity="0.6"/>
+        <rect x="280" y="13" width="7" height="10" rx="2" fill="#4080D0" opacity="0.6"/>
+        <rect x="280" y="27" width="7" height="10" rx="2" fill="#4080D0" opacity="0.6"/>
+        <rect x="280" y="39" width="7" height="10" rx="2" fill="#4080D0" opacity="0.6"/>
+      </svg>
+      <div><span class="mode-badge mode-single">SINGLE ×4</span><span class="note">4 cams · 4 ports · all used</span></div>
+    </div>
+    <div class="proc-box"><div class="proc-name">RT V</div><div class="proc-sub">4 PORTS</div></div>
+    <div class="fps-box"><div class="fps-value fps-half">7,570<span style="font-size:12px">fps</span></div><div class="fps-label fps-half">⚠ HALF FPS</div></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- RT IV -->
+  <div class="row">
+    <div class="cam-box"><div class="cam-name">Phoenix HD</div><div class="cam-sub">DUAL CAPABLE</div></div>
+    <div style="flex:1">
+      <svg width="100%" height="40" viewBox="0 0 400 40">
+        <line x1="0" y1="20" x2="160" y2="20" stroke="#4080D0" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="165" cy="20" r="7" fill="#0A0A0A" stroke="#4080D0" stroke-width="2"/>
+        <circle cx="165" cy="20" r="3" fill="#4080D0"/>
+        <line x1="165" y1="20" x2="280" y2="10" stroke="#4080D0" stroke-width="3"/>
+        <line x1="165" y1="20" x2="280" y2="30" stroke="#4080D0" stroke-width="3"/>
+        <rect x="280" y="5" width="8" height="12" rx="2" fill="#4080D0"/>
+        <rect x="280" y="24" width="8" height="12" rx="2" fill="#4080D0"/>
+        <text x="295" y="14" fill="#4080D0" font-size="8" font-family="JetBrains Mono" font-weight="700">P1</text>
+        <text x="295" y="33" fill="#4080D0" font-size="8" font-family="JetBrains Mono" font-weight="700">P2</text>
+      </svg>
+      <div><span class="mode-badge mode-dual">DUAL CABLE</span><span class="note">1 cam · 2 ports · all used</span></div>
+    </div>
+    <div class="proc-box"><div class="proc-name">RT IV Rack</div><div class="proc-sub">2 PORTS</div></div>
+    <div class="fps-box"><div class="fps-value fps-full">15,140<span style="font-size:12px">fps</span></div><div class="fps-label fps-full">FULL FPS</div></div>
+  </div>
+
+  <div class="row">
+    <div class="cam-box"><div class="cam-name">Phoenix HD ×2</div><div class="cam-sub">SINGLE EACH</div></div>
+    <div style="flex:1">
+      <svg width="100%" height="30" viewBox="0 0 400 30">
+        <line x1="0" y1="8" x2="280" y2="8" stroke="#4080D0" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+        <line x1="0" y1="22" x2="280" y2="22" stroke="#4080D0" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+        <rect x="280" y="3" width="7" height="10" rx="2" fill="#4080D0" opacity="0.6"/>
+        <rect x="280" y="17" width="7" height="10" rx="2" fill="#4080D0" opacity="0.6"/>
+      </svg>
+      <div><span class="mode-badge mode-single">SINGLE ×2</span><span class="note">2 cams · 2 ports · all used</span></div>
+    </div>
+    <div class="proc-box"><div class="proc-name">RT IV Rack</div><div class="proc-sub">2 PORTS</div></div>
+    <div class="fps-box"><div class="fps-value fps-half">7,570<span style="font-size:12px">fps</span></div><div class="fps-label fps-half">⚠ HALF FPS</div></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- RT III / TC II.1 -->
+  <div class="row">
+    <div class="cam-box"><div class="cam-name">Phoenix HD</div><div class="cam-sub">DUAL CAPABLE</div></div>
+    <div style="flex:1">
+      <svg width="100%" height="20" viewBox="0 0 400 20">
+        <line x1="0" y1="10" x2="280" y2="10" stroke="#4080D0" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+        <rect x="280" y="5" width="8" height="12" rx="2" fill="#4080D0" opacity="0.6"/>
+      </svg>
+      <div><span class="mode-badge mode-single">SINGLE CABLE</span><span class="note">1 cam · 1 port</span></div>
+    </div>
+    <div class="proc-box"><div class="proc-name">RT III / TC II.1</div><div class="proc-sub">1 PORT</div></div>
+    <div class="fps-box"><div class="fps-value fps-half">7,570<span style="font-size:12px">fps</span></div><div class="fps-label fps-half">⚠ HALF FPS</div></div>
+  </div>
+</div>
+
+<!-- SINGLE-ONLY CAMERAS -->
+<div class="section">
+  <div class="section-title">SINGLE-ONLY CAMERAS — Helios 8K², Phoenix CR, XS II</div>
+  <div class="note" style="margin-bottom:16px">These cameras have one fiber connection. Always FULL FPS regardless of port count. Multiple cameras = one per port.</div>
+
+  <div class="row">
+    <div class="cam-box"><div class="cam-name">Helios 8K²</div><div class="cam-sub">SINGLE CONN</div></div>
+    <div style="flex:1">
+      <svg width="100%" height="20" viewBox="0 0 400 20">
+        <line x1="0" y1="10" x2="280" y2="10" stroke="#4080D0" stroke-width="3" stroke-linecap="round"/>
+        <rect x="280" y="5" width="8" height="12" rx="2" fill="#4080D0"/>
+        <text x="300" y="14" fill="rgba(255,255,255,0.3)" font-size="8" font-family="JetBrains Mono">+3 free</text>
+      </svg>
+      <div><span class="mode-badge mode-single">SINGLE ×1</span></div>
+    </div>
+    <div class="proc-box"><div class="proc-name">RT V</div><div class="proc-sub">4 PORTS</div></div>
+    <div class="fps-box"><div class="fps-value fps-full">90<span style="font-size:12px">fps</span></div><div class="fps-label fps-full">FULL FPS</div></div>
+  </div>
+
+  <div class="row">
+    <div class="cam-box"><div class="cam-name">XS II-HD ×4</div><div class="cam-sub">SINGLE EACH</div></div>
+    <div style="flex:1">
+      <svg width="100%" height="50" viewBox="0 0 400 50">
+        <line x1="0" y1="6" x2="280" y2="6" stroke="#4080D0" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="0" y1="18" x2="280" y2="18" stroke="#4080D0" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="0" y1="32" x2="280" y2="32" stroke="#4080D0" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="0" y1="44" x2="280" y2="44" stroke="#4080D0" stroke-width="2.5" stroke-linecap="round"/>
+        <rect x="280" y="1" width="7" height="10" rx="2" fill="#4080D0"/>
+        <rect x="280" y="13" width="7" height="10" rx="2" fill="#4080D0"/>
+        <rect x="280" y="27" width="7" height="10" rx="2" fill="#4080D0"/>
+        <rect x="280" y="39" width="7" height="10" rx="2" fill="#4080D0"/>
+      </svg>
+      <div><span class="mode-badge mode-single">SINGLE ×4</span><span class="note">4 cams · 4 ports · all used</span></div>
+    </div>
+    <div class="proc-box"><div class="proc-name">RT V</div><div class="proc-sub">4 PORTS</div></div>
+    <div class="fps-box"><div class="fps-value fps-full">5,850<span style="font-size:12px">fps</span></div><div class="fps-label fps-full">FULL FPS each</div></div>
+  </div>
+</div>
+
+<!-- RESTRICTIONS -->
+<div class="section">
+  <div class="section-title">RESTRICTIONS</div>
+  <div class="rule-box rule-red">
+    <div class="rule-title" style="color:#D94040">HELIOS 8K² — NOT ALLOWED ON RT III COMPACT</div>
+    <div class="note">No GPU capacity for 8K × 8K sensor. Greyed out in configurator.</div>
+  </div>
+</div>
+
+<!-- COMPLETE MATRIX -->
+<div class="section">
+  <div class="section-title">CONNECTION MODE MATRIX</div>
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th></th>
+        <th>RT V<br><span style="opacity:0.5">4 ports</span></th>
+        <th>RT IV Rack<br><span style="opacity:0.5">2 ports</span></th>
+        <th>RT III Compact<br><span style="opacity:0.5">1 port</span></th>
+        <th>TC II.2<br><span style="opacity:0.5">2 ports</span></th>
+        <th>TC II.1<br><span style="opacity:0.5">1 port</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="text-align:left;font-weight:600">Galileo<br>Phoenix GOLD<br>Phoenix HD/UHD<br><span style="font-size:9px;opacity:0.4">DUAL CAPABLE</span></td>
+        <td class="dual">DUAL ×1<br>DUAL ×2<br><span class="half" style="font-size:9px">SINGLE ×4</span></td>
+        <td class="dual">DUAL CABLE<br><span class="half" style="font-size:9px">SINGLE ×2</span></td>
+        <td>SINGLE<br><span class="half" style="font-size:9px">⚠ HALF FPS</span></td>
+        <td class="dual">DUAL CABLE<br><span class="half" style="font-size:9px">SINGLE ×2</span></td>
+        <td>SINGLE<br><span class="half" style="font-size:9px">⚠ HALF FPS</span></td>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:600">Helios 8K²<br><span style="font-size:9px;opacity:0.4">SINGLE ONLY</span></td>
+        <td>SINGLE ×1<br>SINGLE ×4</td>
+        <td>SINGLE ×1<br>SINGLE ×2</td>
+        <td class="blocked">NOT ALLOWED</td>
+        <td>SINGLE ×1<br>SINGLE ×2</td>
+        <td>SINGLE</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;font-weight:600">Phoenix CR<br>XS II<br><span style="font-size:9px;opacity:0.4">SINGLE ONLY</span></td>
+        <td>SINGLE ×1<br>SINGLE ×4</td>
+        <td>SINGLE ×1<br>SINGLE ×2</td>
+        <td>SINGLE</td>
+        <td>SINGLE ×1<br>SINGLE ×2</td>
+        <td>SINGLE</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- RULES -->
+<div class="section">
+  <div class="section-title">THE RULES</div>
+  <div class="rule-box rule-blue">
+    <div class="rule-title" style="color:#4080D0">DUAL CABLE</div>
+    <div class="note">Dual-capable cameras use 2 ports for FULL FPS. Available on processors with 2+ ports.</div>
+  </div>
+  <div class="rule-box rule-green">
+    <div class="rule-title" style="color:#40A858">SINGLE-ONLY CAMERAS = ALWAYS FULL FPS</div>
+    <div class="note">Helios, Phoenix CR, XS II always run at full frame rate regardless of connection mode.</div>
+  </div>
+  <div class="rule-box rule-red">
+    <div class="rule-title" style="color:#CC4444">DUAL CAMERA ON SINGLE PORT = HALF FPS</div>
+    <div class="note">Galileo, Phoenix GOLD, Phoenix on single cable lose half their frame rate.</div>
+  </div>
+</div>
+
+<div style="margin-top:40px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.06)">
+  <div class="note">IDT FIBER ENGINE v1.2 — Logic Diagram — 2026-03-19</div>
+  <div class="note" style="margin-top:4px">Live: https://cia-mac.github.io/idt-configurator-luiz/</div>
+</div>
+
+</body>
+</html>

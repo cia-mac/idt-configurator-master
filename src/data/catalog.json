@@ -1,0 +1,234 @@
+{
+  "processors": [
+    {
+      "id": "rt4",
+      "name": "RT IV Rack",
+      "tagline": "Flagship Rack-Mount",
+      "channels": 2,
+      "maxCameras": 2,
+      "formFactor": "19\" Rack",
+      "interface": "XStream Fiber · 2CH",
+      "desc": "Dual-channel fiber — 1 camera at full speed or 2 cameras at half speed",
+      "group": "flexible",
+      "connectionOptions": ["single", "dual"],
+      "configOptions": {
+        "ddr": [256, 512, 1024],
+        "ddrUnit": "MB",
+        "storage": [4, 8, 16],
+        "storageUnit": "TB"
+      }
+    },
+    {
+      "id": "rtv",
+      "name": "RT V",
+      "tagline": "Next-Gen Rack-Mount",
+      "channels": 4,
+      "maxCameras": 4,
+      "formFactor": "19\" Rack",
+      "interface": "XStream Fiber · 4CH",
+      "desc": "Quad-channel fiber — up to 2 cameras at full speed or 4 cameras at half speed",
+      "group": "flexible",
+      "connectionOptions": ["single", "dual"],
+      "configOptions": {
+        "ddr": [256, 512, 1024],
+        "ddrUnit": "MB",
+        "storage": [4, 8, 16],
+        "storageUnit": "TB"
+      }
+    },
+    {
+      "id": "rt3",
+      "name": "RT III Compact",
+      "tagline": "Versatile Compact",
+      "channels": 1,
+      "maxCameras": 1,
+      "usbcPorts": 2,
+      "formFactor": "Compact Server",
+      "interface": "1CH QSFP Fiber + 2× USB-C",
+      "desc": "Hybrid — 1 fiber camera or 2 USB-C cameras",
+      "group": "flexible",
+      "connectionOptions": ["single"],
+      "configOptions": {
+        "ram": 128,
+        "ramUnit": "GB",
+        "ramFixed": true,
+        "osDisk": true,
+        "storage": [4, 8, 16],
+        "storageUnit": "TB"
+      }
+    },
+    {
+      "id": "tc2-1",
+      "name": "TC II.1",
+      "tagline": "Single Channel",
+      "channels": 1,
+      "formFactor": "Time Capsule",
+      "interface": "XStream Fiber · 1CH",
+      "desc": "Portable single-channel fiber recorder",
+      "group": "portable",
+      "connectionOptions": ["single"]
+    },
+    {
+      "id": "tc2-2",
+      "name": "TC II.2",
+      "tagline": "Dual Channel",
+      "channels": 2,
+      "formFactor": "Time Capsule",
+      "interface": "XStream Fiber · 2CH",
+      "desc": "Portable dual-channel fiber — 1 camera at full speed or 2 cameras at half speed",
+      "group": "portable",
+      "connectionOptions": ["single", "dual"]
+    },
+    {
+      "id": "tb3",
+      "name": "TB3",
+      "tagline": "Thunderbolt 3",
+      "channels": 1,
+      "formFactor": "Compact",
+      "interface": "XStream USB-C",
+      "desc": "Direct laptop connection via Thunderbolt 3 interface",
+      "group": "miniature",
+      "connectionOptions": ["single"]
+    },
+    {
+      "id": "viper",
+      "name": "Viper",
+      "tagline": "Ethernet Processor",
+      "channels": 1,
+      "formFactor": "Compact",
+      "interface": "Ethernet",
+      "desc": "Ethernet-based processing for CrashCam systems",
+      "group": "ccm",
+      "connectionOptions": ["single"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "xstream-fiber",
+      "label": "FIBER",
+      "sublabel": "XSTREAM",
+      "group": "fiber",
+      "mult": 1,
+      "icon": "fiber"
+    },
+    {
+      "id": "xstream-usbc",
+      "label": "USB-C",
+      "sublabel": "XSTREAM",
+      "group": "compact",
+      "mult": 1,
+      "icon": "usbc"
+    },
+    {
+      "id": "ethernet",
+      "label": "ETH",
+      "sublabel": "ETHERNET",
+      "group": "ccm",
+      "mult": 1,
+      "icon": "eth"
+    }
+  ],
+  "compatibility": {
+    "rt4": ["xstream-fiber"],
+    "rtv": ["xstream-fiber"],
+    "rt3": ["xstream-fiber", "xstream-usbc"],
+    "tc2-1": ["xstream-fiber"],
+    "tc2-2": ["xstream-fiber"],
+    "tb3": ["xstream-usbc"],
+    "viper": ["ethernet"]
+  },
+  "restrictions": {
+    "helios": {
+      "blockedProcessors": ["rt3"],
+      "reason": "RT III lacks GPU required for 8K×8K processing"
+    }
+  },
+  "fpsDropRules": {
+    "description": "Dual-connection cameras on single-channel processors run at reduced frame rate",
+    "affectedFamilies": ["galileo", "phoenix-gold", "phoenix"],
+    "singleChannelProcessors": ["rt3", "tc2-1"],
+    "note": "Frame rate reduced — single channel connection (use dual-channel processor for full speed)"
+  },
+  "camera_families": [
+    { "id": "helios", "name": "Helios 8K²", "group": "fiber", "dualConnection": false, "mode": "streaming" },
+    { "id": "galileo", "name": "Galileo", "group": "fiber", "dualConnection": true, "mode": "streaming" },
+    { "id": "phoenix-gold", "name": "Phoenix GOLD", "group": "fiber", "dualConnection": true, "mode": "streaming" },
+    { "id": "phoenix", "name": "Phoenix", "group": "fiber", "dualConnection": true, "mode": "streaming" },
+    { "id": "phoenix-cr", "name": "Phoenix CR", "group": "fiber", "dualConnection": false, "mode": "streaming" },
+    { "id": "xs2", "name": "XS II", "group": "fiber", "dualConnection": false, "mode": "streaming" },
+    { "id": "os2-gold", "name": "OS II GOLD", "group": "compact", "mode": "streaming" },
+    { "id": "os2", "name": "OS II", "group": "compact", "mode": "streaming" },
+    { "id": "xsm", "name": "XSM", "group": "compact", "mode": "streaming" },
+    { "id": "xstream", "name": "XStream Stick", "group": "compact", "mode": "streaming" },
+    { "id": "sugarcube", "name": "SugarCube™", "group": "compact", "mode": "streaming" },
+    { "id": "ccs", "name": "CrashCam Stick", "group": "ccm", "mode": "ccm" },
+    { "id": "ccm", "name": "CrashCam mini", "group": "ccm", "mode": "ccm" }
+  ],
+  "models": {
+    "helios": [
+      { "id": "helios-8k2", "name": "8K²", "fullName": "Helios 8K²", "res": "8192 × 8192", "fps": "90", "conn": "Fiber", "sensor": "20.48 × 20.48", "pixel": "2.5 × 2.5", "depth": "8-10-12 / 24-30-36", "isoMono": "3,000", "isoColor": "1,000", "mount": "Canon C (adaptable)", "weight": "1,321g", "dims": "161.54 × 101.6 × 93.98 mm", "note": "8K×6K @120fps" }
+    ],
+    "galileo": [
+      { "id": "gal-3k", "name": "3K", "fullName": "Galileo-3K", "res": "3200 × 2560", "fps": "3,675", "conn": "Fiber", "sensor": "23 × 18.4", "pixel": "7.2", "depth": "8-10-12 / 24-30-36", "isoMono": "1,000", "isoColor": "3,000", "mount": "Canon / EMFT", "weight": "1,026g", "dims": "155.9 × 54.5 × 139 mm" },
+      { "id": "gal-5k", "name": "5K", "fullName": "Galileo-5K", "res": "5120 × 2448", "fps": "2,000", "conn": "Fiber", "sensor": "20.4 × 9.8", "pixel": "4.0", "depth": "8-10-12 / 24-30-36", "isoMono": "1,000", "isoColor": "3,000", "mount": "Canon / EMFT", "weight": "1,026g", "dims": "155.9 × 54.5 × 139 mm" },
+      { "id": "gal-5kv", "name": "5K Veloce", "fullName": "Galileo-5K-Veloce", "res": "5120 × 3456", "fps": "889", "conn": "Fiber", "sensor": "30.2 × 20.4", "pixel": "5.9", "depth": "10-12 / 10-12", "isoMono": "6,000", "isoColor": "2,000", "mount": "Canon / EMFT", "weight": "1,026g", "dims": "155.9 × 54.5 × 139 mm" },
+      { "id": "gal-6k", "name": "6K", "fullName": "Galileo-6K", "res": "6400 × 5120", "fps": "1,000", "conn": "Fiber", "sensor": "23 × 18.4", "pixel": "3.6", "depth": "8-10-12 / 24-30-36", "isoMono": "1,000", "isoColor": "3,000", "mount": "Canon / EMFT", "weight": "1,026g", "dims": "155.9 × 54.5 × 139 mm" }
+    ],
+    "phoenix-gold": [
+      { "id": "pg-3k", "name": "3K", "fullName": "Phoenix Gold-3K", "res": "3200 × 2560", "fps": "3,675", "conn": "Fiber", "sensor": "23 × 18.4", "pixel": "7.2", "depth": "8-10-12 / 24-30-36", "isoMono": "1,000", "isoColor": "3,000", "mount": "Canon EF (electronic)", "weight": "1,000g", "dims": "152.5 × 82.5 × 95.4 mm" },
+      { "id": "pg-5k", "name": "5K", "fullName": "Phoenix Gold-5K", "res": "5120 × 2448", "fps": "2,000", "conn": "Fiber", "sensor": "20.4 × 9.8", "pixel": "4.0", "depth": "8-10-12 / 24-30-36", "isoMono": "1,000", "isoColor": "3,000", "mount": "Canon EF (electronic)", "weight": "1,000g", "dims": "152.5 × 82.5 × 95.4 mm" },
+      { "id": "pg-5kv", "name": "5K Veloce", "fullName": "Phoenix Gold-5K-Veloce", "res": "5120 × 3456", "fps": "889", "conn": "Fiber", "sensor": "30.2 × 20.4", "pixel": "5.9", "depth": "10-12 / 10-12", "isoMono": "6,000", "isoColor": "2,000", "mount": "Canon EF (electronic)", "weight": "1,000g", "dims": "152.5 × 82.5 × 95.4 mm" },
+      { "id": "pg-6k", "name": "6K", "fullName": "Phoenix Gold-6K", "res": "6400 × 5120", "fps": "1,000", "conn": "Fiber", "sensor": "23 × 18.4", "pixel": "3.6", "depth": "8-10-12 / 24-30-36", "isoMono": "1,000", "isoColor": "3,000", "mount": "Canon EF (electronic)", "weight": "1,000g", "dims": "152.5 × 82.5 × 95.4 mm" }
+    ],
+    "phoenix": [
+      { "id": "ph-hd", "name": "HD", "fullName": "Phoenix-HD", "res": "1920 × 1440", "fps": "15,140", "conn": "Fiber", "sensor": "20 × 15", "pixel": "10.4 × 10.4", "depth": "10 / 30", "isoMono": "30,000", "isoColor": "10,000", "mount": "EMFT", "weight": "710g", "dims": "153 × 48 × 84 mm", "note": "Dual Exposure/Frame Rate" },
+      { "id": "ph-uhd", "name": "UHD", "fullName": "Phoenix-UHD", "res": "3840 × 2880", "fps": "3,788", "conn": "Fiber", "sensor": "20 × 15", "pixel": "5.2 × 5.2", "depth": "10 / 30", "isoMono": "10,000", "isoColor": "3,000", "mount": "EMFT", "weight": "710g", "dims": "153 × 48 × 84 mm", "note": "Dual Exposure/Frame Rate" }
+    ],
+    "phoenix-cr": [
+      { "id": "pcr-hd", "name": "HD", "fullName": "Phoenix CR-HD", "res": "1920 × 1080", "fps": "13,000", "conn": "Fiber", "sensor": "20 × 15", "pixel": "10.4 × 10.4", "depth": "10 / 30", "isoMono": "30,000", "isoColor": "10,000", "mount": "Canon EF (electronic)", "weight": "812g", "dims": "85.1 × 99.6 × 87 mm", "note": "Rugged" },
+      { "id": "pcr-uhd", "name": "UHD", "fullName": "Phoenix CR-UHD", "res": "3840 × 2160", "fps": "3,260", "conn": "Fiber", "sensor": "20 × 15", "pixel": "5.2 × 5.2", "depth": "10 / 30", "isoMono": "10,000", "isoColor": "3,000", "mount": "Canon EF (electronic)", "weight": "812g", "dims": "85.1 × 99.6 × 87 mm", "note": "Rugged" }
+    ],
+    "xs2": [
+      { "id": "xs2-1550", "name": "1550", "fullName": "XS II-1550", "res": "1440 × 1024", "fps": "4,850", "conn": "Fiber", "sensor": "16.7 × 11.9", "pixel": "11.6 × 11.6", "depth": "10 / 30", "isoMono": "30,000", "isoColor": "10,000", "mount": "Canon / EMFT", "weight": "670g", "dims": "133.7 × 68.7 × 64.3 mm" },
+      { "id": "xs2-hd", "name": "HD", "fullName": "XS II-HD", "res": "1920 × 1080", "fps": "5,850", "conn": "Fiber", "sensor": "19.2 × 10.8", "pixel": "10 × 10", "depth": "10 / 30", "isoMono": "30,000", "isoColor": "10,000", "mount": "Canon / EMFT", "weight": "670g", "dims": "133.7 × 68.7 × 64.3 mm" },
+      { "id": "xs2-3530", "name": "3530", "fullName": "XS II-3530", "res": "2560 × 1440", "fps": "3,000", "conn": "Fiber", "sensor": "19.2 × 10.8", "pixel": "7.5 × 7.5", "depth": "10 / 30", "isoMono": "30,000", "isoColor": "10,000", "mount": "Canon / EMFT", "weight": "670g", "dims": "133.7 × 68.7 × 64.3 mm" },
+      { "id": "xs2-4kv", "name": "4K Veloce", "fullName": "XS II-4K Veloce", "res": "3840 × 2160", "fps": "1,000", "conn": "Fiber", "sensor": "15 × 8.4", "pixel": "3.9 × 3.9", "depth": "10 / 30", "isoMono": "6,000", "isoColor": "2,000", "mount": "Canon / EMFT", "weight": "670g", "dims": "133.7 × 68.7 × 64.3 mm" },
+      { "id": "xs2-5k", "name": "5K", "fullName": "XS II-5K", "res": "5120 × 2880", "fps": "400", "conn": "Fiber", "sensor": "18.4 × 10.4", "pixel": "3.6 × 3.6", "depth": "10 / 30", "isoMono": "6,000", "isoColor": "2,000", "mount": "Canon / EMFT", "weight": "670g", "dims": "133.7 × 68.7 × 64.3 mm" }
+    ],
+    "os2-gold": [
+      { "id": "osg-35xx", "name": "35XX", "fullName": "OStreaming 35XX", "res": "2560 × 1520", "fps": "3,450", "conn": "USB-C", "sensor": "N/S", "pixel": "3.6 × 3.6", "depth": "8-12 / 24-36", "isoMono": "6,000", "isoColor": "2,000", "mount": "EMFT / C-Mount", "weight": "400g", "dims": "85 × 72 × 64 mm" },
+      { "id": "osg-50xx", "name": "50XX", "fullName": "OStreaming 50XX", "res": "5120 × 2448", "fps": "1,000", "conn": "USB-C", "sensor": "N/S", "pixel": "4 × 4", "depth": "8-12 / 24-36", "isoMono": "6,000", "isoColor": "2,000", "mount": "EMFT / C-Mount", "weight": "400g", "dims": "85 × 72 × 64 mm" },
+      { "id": "osg-60xx", "name": "60XX", "fullName": "OStreaming 60XX", "res": "6400 × 5120", "fps": "480", "conn": "USB-C", "sensor": "N/S", "pixel": "3.6 × 3.6", "depth": "8-12 / 24-36", "isoMono": "6,000", "isoColor": "2,000", "mount": "EMFT / C-Mount", "weight": "400g", "dims": "85 × 72 × 64 mm" }
+    ],
+    "os2": [
+      { "id": "os2-1550", "name": "1550", "fullName": "OS II-1550", "res": "1440 × 1024", "fps": "4,850", "conn": "USB-C", "sensor": "17.5 × 9.85", "pixel": "9.12 × 9.12", "depth": "12 / 36", "isoMono": "30,000", "isoColor": "10,000", "mount": "EMFT / C-Mount", "weight": "400g", "dims": "85 × 72 × 64 mm" },
+      { "id": "os2-hd", "name": "HD", "fullName": "OS II-HD", "res": "1920 × 1080", "fps": "5,850", "conn": "USB-C", "sensor": "17.5 × 9.85", "pixel": "9.13 × 9.13", "depth": "12 / 36", "isoMono": "30,000", "isoColor": "10,000", "mount": "EMFT / C-Mount", "weight": "400g", "dims": "85 × 72 × 64 mm" },
+      { "id": "os2-3530", "name": "3530", "fullName": "OS II-3530", "res": "2560 × 1440", "fps": "3,000", "conn": "USB-C", "sensor": "19.2 × 10.8", "pixel": "7.5 × 7.5", "depth": "12 / 36", "isoMono": "30,000", "isoColor": "10,000", "mount": "EMFT / C-Mount", "weight": "400g", "dims": "85 × 72 × 64 mm" },
+      { "id": "os2-5k", "name": "5K", "fullName": "OS II-5K", "res": "5120 × 2880", "fps": "400", "conn": "USB-C", "sensor": "18.2 × 10.2", "pixel": "3.55 × 3.55", "depth": "12 / 36", "isoMono": "6,000", "isoColor": "2,000", "mount": "EMFT / C-Mount", "weight": "400g", "dims": "85 × 72 × 64 mm" }
+    ],
+    "xsm": [
+      { "id": "xsm-1540", "name": "1540", "fullName": "XSM-1540", "res": "1440 × 1024", "fps": "4,700", "conn": "USB-C", "sensor": "16.7 × 11.9", "pixel": "11.6 × 11.6", "depth": "10 / 30", "isoMono": "30,000", "isoColor": "10,000", "mount": "Canon / EMFT / C-Mount", "weight": "200g", "dims": "44 × 58 × 47 mm" },
+      { "id": "xsm-hd", "name": "HD", "fullName": "XSM-HD", "res": "1920 × 1080", "fps": "5,350", "conn": "USB-C", "sensor": "17.5 × 9.8", "pixel": "9.1 × 9.1", "depth": "10 / 30", "isoMono": "30,000", "isoColor": "10,000", "mount": "Canon / EMFT / C-Mount", "weight": "200g", "dims": "44 × 58 × 47 mm" },
+      { "id": "xsm-3530", "name": "3530", "fullName": "XSM-3530", "res": "2560 × 1440", "fps": "2,350", "conn": "USB-C", "sensor": "19.2 × 10.8", "pixel": "7.5 × 7.5", "depth": "10 / 30", "isoMono": "6,000", "isoColor": "2,000", "mount": "Canon / EMFT / C-Mount", "weight": "200g", "dims": "44 × 58 × 47 mm" },
+      { "id": "xsm-4kv", "name": "4K Veloce", "fullName": "XSM-4K Veloce", "res": "3840 × 2160", "fps": "1,000", "conn": "USB-C", "sensor": "12.8 × 7.2", "pixel": "3.33 × 3.33", "depth": "10 / 30", "isoMono": "3,000", "isoColor": "1,000", "mount": "Canon / EMFT / C-Mount", "weight": "200g", "dims": "44 × 58 × 47 mm" },
+      { "id": "xsm-5k", "name": "5K", "fullName": "XSM-5K", "res": "5120 × 2880", "fps": "400", "conn": "USB-C", "sensor": "18.34 × 13.76", "pixel": "3.58 × 3.58", "depth": "10 / 30", "isoMono": "6,000", "isoColor": "2,000", "mount": "Canon / EMFT / C-Mount", "weight": "200g", "dims": "44 × 58 × 47 mm" }
+    ],
+    "xstream": [
+      { "id": "xss-hd", "name": "HD", "fullName": "XSStick-HD", "res": "1920 × 1536", "fps": "1,000", "conn": "USB-C", "sensor": "8.5 × 6.8", "pixel": "4.4 × 4.4", "depth": "10 / 30", "isoMono": "10,000", "isoColor": "3,000", "mount": "C / NF / S", "weight": "60g", "dims": "17 × 25 × 92 mm" }
+    ],
+    "sugarcube": [
+      { "id": "sc", "name": "SC", "fullName": "SugarCube™", "res": "1920 × 1536", "fps": "1,000", "conn": "USB-C", "sensor": "8.5 × 6.8", "pixel": "4.4 × 4.4", "depth": "10 / 30", "isoMono": "10,000", "isoColor": "3,000", "mount": "NF / C (w/adapter)", "weight": "54g", "dims": "42 × 28 × 30 mm" }
+    ],
+    "ccm": [
+      { "id": "ccm-1520", "name": "1520", "fullName": "CCM-1520", "res": "1440 × 1024", "fps": "2,000", "conn": "Ethernet", "sensor": "16.7 × 11.9", "pixel": "11.6 × 11.6", "depth": "12 / 36", "isoMono": "30,000", "isoColor": "10,000", "mount": "EMFT / C-Mount", "weight": "270g", "dims": "70 × 44 × 44 mm", "note": "Crash testing" },
+      { "id": "ccm-1550", "name": "1550", "fullName": "CCM-1550", "res": "1440 × 1024", "fps": "4,850", "conn": "Ethernet", "sensor": "16.7 × 11.9", "pixel": "11.6 × 11.6", "depth": "12 / 36", "isoMono": "30,000", "isoColor": "10,000", "mount": "EMFT / C-Mount", "weight": "270g", "dims": "70 × 44 × 44 mm", "note": "Crash testing" },
+      { "id": "ccm-hd", "name": "HD", "fullName": "CCM-HD", "res": "1920 × 1080", "fps": "5,850", "conn": "Ethernet", "sensor": "19.2 × 10.8", "pixel": "7.5 × 7.5", "depth": "12 / 36", "isoMono": "30,000", "isoColor": "10,000", "mount": "EMFT / C-Mount", "weight": "270g", "dims": "70 × 44 × 44 mm", "note": "Crash testing" },
+      { "id": "ccm-3510", "name": "3510", "fullName": "CCM-3510", "res": "2560 × 1440", "fps": "1,000", "conn": "Ethernet", "sensor": "19.2 × 10.8", "pixel": "7.5 × 7.5", "depth": "12 / 36", "isoMono": "30,000", "isoColor": "10,000", "mount": "EMFT / C-Mount", "weight": "270g", "dims": "70 × 44 × 44 mm", "note": "Crash testing" },
+      { "id": "ccm-3530", "name": "3530", "fullName": "CCM-3530", "res": "2560 × 1440", "fps": "3,000", "conn": "Ethernet", "sensor": "19.2 × 10.8", "pixel": "7.5 × 7.5", "depth": "12 / 36", "isoMono": "30,000", "isoColor": "10,000", "mount": "EMFT / C-Mount", "weight": "270g", "dims": "70 × 44 × 44 mm", "note": "Crash testing" },
+      { "id": "ccm-4kv", "name": "4K Veloce", "fullName": "CCM-4K Veloce", "res": "3840 × 2160", "fps": "1,000", "conn": "Ethernet", "sensor": "16 × 8.4", "pixel": "3.9 × 3.9", "depth": "10 / 30", "isoMono": "6,000", "isoColor": "2,000", "mount": "EMFT / C-Mount", "weight": "270g", "dims": "70 × 44 × 44 mm", "note": "Crash testing" }
+    ],
+    "ccs": [
+      { "id": "ccs", "name": "CCS", "fullName": "CrashCam Stick", "res": "1920 × 1536", "fps": "1,000", "conn": "Ethernet", "sensor": "8.5 × 6.8", "pixel": "4.4 × 4.4", "depth": "10 / 30", "isoMono": "10,000", "isoColor": "3,000", "mount": "C / NF / S", "weight": "90g", "dims": "24 × 25 × 98 mm", "note": "200G shock" }
+    ]
+  }
+}
