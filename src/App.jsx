@@ -149,10 +149,11 @@ export default function App() {
   const camStripRef = React.useRef(null);
   // Preload XSLink Hub image for canvas drawing
   const hubImgRef = React.useRef(null);
+  const [hubImgLoaded, setHubImgLoaded] = useState(false);
   useEffect(() => {
     const img = new Image();
     img.src = './images/xslink-hub.png';
-    img.onload = () => { hubImgRef.current = img; };
+    img.onload = () => { hubImgRef.current = img; setHubImgLoaded(true); };
   }, []);
   const procStripRef = React.useRef(null);
   // Master Engine: unified configurator — all cameras, all processors, all connections
@@ -532,7 +533,7 @@ export default function App() {
       drawPlug(x1, y1, color);
       drawPlug(x2, y2, color);
     }
-  }, [selectedFamily, selectedProc, connType, hybridModes]);
+  }, [selectedFamily, selectedProc, connType, hybridModes, hubImgLoaded]);
 
   // Redraw on scroll events from either strip
   useEffect(() => {
