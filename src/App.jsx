@@ -138,6 +138,7 @@ export default function App() {
   const [selectedModel, setSelectedModel] = useState(null);
   const [connType, setConnType] = useState('single'); // 'single' (1CH) or 'dual' (2CH)
   const [heroView, setHeroView] = useState('detail'); // 'detail' or 'compare'
+  const [detailStage, setDetailStage] = useState('camera'); // 'camera' or 'processor'
   const [procConfig, setProcConfig] = useState({}); // { ddr: 256, storage: 4 }
   // Hybrid cameras (OS II GOLD, OS II): 'streaming' (USB-C) or 'ethernet'
   const [hybridModes, setHybridModes] = useState({ 'os2-gold': 'streaming', os2: 'streaming' });
@@ -214,6 +215,12 @@ export default function App() {
     const fam = catalog.camera_families.find(f => f.id === selectedFamily);
     const proc = catalog.processors.find(p => p.id === selectedProc);
     if (!fam || !proc) return [];
+    // USB-C cameras via XSLink hub — no mode selector, connection is automatic
+    if (needsXSLinkHub(selectedFamily, selectedProc, hybridModes[selectedFamily])) return [];
+    // Ethernet cameras — no mode selector, direct connection
+    if (fam.group === 'ccm') return [];
+    // Hybrid cameras in ethernet mode — no mode selector
+    if (fam.hybrid && hybridModes[selectedFamily] === 'ethernet') return [];
     const modes = [];
     const ports = proc.channels;
     const isDualCam = fam.dualConnection === true;
@@ -321,7 +328,7 @@ export default function App() {
       ctx.quadraticCurveTo(mx, my, xb, yb);
       // Shadow
       ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-      ctx.lineWidth = w + 3;
+      ctx.lineWidth = w + 1.5;
       ctx.lineCap = 'round';
       ctx.stroke();
       // Main cable
@@ -379,27 +386,29 @@ export default function App() {
       const portSpread = 18;
       const port1Y = y2 - portSpread;
       const port2Y = y2 + portSpread;
-      // Split point — 70% toward processor, vertically centered on processor
-      const splitX = x1 + (x2 - x1) * 0.65;
+      // Split point — centered in cable zone
+      const czEl = document.querySelector('[data-strip="cable-zone"]');
+      const czR = czEl?.getBoundingClientRect();
+      const splitX = czR ? (czR.left + czR.right) / 2 : x1 + (x2 - x1) * 0.73;
       const splitY = y2;
       // Trunk — camera to split point
-      drawHangingCable(x1, y1, splitX, splitY, 30, color, 6);
+      drawHangingCable(x1, y1, splitX, splitY, 30, color, 3);
       // Split node
       drawSplitNode(splitX, splitY, color);
       // Branch 1 → PORT 1 (short straight-ish line up)
       ctx.beginPath(); ctx.moveTo(splitX, splitY);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, port1Y - 5, x2, port1Y);
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 3.5; ctx.lineCap = 'round'; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(splitX, splitY);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, port1Y - 5, x2, port1Y);
-      ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
       // Branch 2 → PORT 2 (short straight-ish line down)
       ctx.beginPath(); ctx.moveTo(splitX, splitY);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, port2Y + 5, x2, port2Y);
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 3.5; ctx.lineCap = 'round'; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(splitX, splitY);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, port2Y + 5, x2, port2Y);
-      ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
       // Plugs
       drawPlug(x1, y1, color);
       drawPlug(x2, port1Y, color);
@@ -416,24 +425,26 @@ export default function App() {
       const fork1Y = y2 - forkSpread;
       const p1Y = fork1Y - portSpread;
       const p2Y = fork1Y + portSpread;
-      const splitX = x1 + (x2 - x1) * 0.65;
+      const czEl2 = document.querySelector('[data-strip="cable-zone"]');
+      const czR2 = czEl2?.getBoundingClientRect();
+      const splitX = czR2 ? (czR2.left + czR2.right) / 2 : x1 + (x2 - x1) * 0.73;
       // Trunk 1
-      drawHangingCable(x1, cam1Y, splitX, fork1Y, 20, color, 5);
+      drawHangingCable(x1, cam1Y, splitX, fork1Y, 20, color, 2.5);
       drawSplitNode(splitX, fork1Y, color);
       // Branch P1
       ctx.beginPath(); ctx.moveTo(splitX, fork1Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p1Y - 4, x2, p1Y);
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(splitX, fork1Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p1Y - 4, x2, p1Y);
-      ctx.strokeStyle = color; ctx.lineWidth = 3.5; ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = 1.75; ctx.stroke();
       // Branch P2
       ctx.beginPath(); ctx.moveTo(splitX, fork1Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p2Y + 4, x2, p2Y);
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(splitX, fork1Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p2Y + 4, x2, p2Y);
-      ctx.strokeStyle = color; ctx.lineWidth = 3.5; ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = 1.75; ctx.stroke();
       drawPlug(x1, cam1Y, color); drawPlug(x2, p1Y, color); drawPlug(x2, p2Y, color);
       drawLabel(x2 + 20, p1Y + 4, 'P1', color, 8);
       drawLabel(x2 + 20, p2Y + 4, 'P2', color, 8);
@@ -443,20 +454,20 @@ export default function App() {
       const fork2Y = y2 + forkSpread;
       const p3Y = fork2Y - portSpread;
       const p4Y = fork2Y + portSpread;
-      drawHangingCable(x1, cam2Y, splitX, fork2Y, 25, color, 5);
+      drawHangingCable(x1, cam2Y, splitX, fork2Y, 25, color, 2.5);
       drawSplitNode(splitX, fork2Y, color);
       ctx.beginPath(); ctx.moveTo(splitX, fork2Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p3Y - 4, x2, p3Y);
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(splitX, fork2Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p3Y - 4, x2, p3Y);
-      ctx.strokeStyle = color; ctx.lineWidth = 3.5; ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = 1.75; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(splitX, fork2Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p4Y + 4, x2, p4Y);
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(splitX, fork2Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p4Y + 4, x2, p4Y);
-      ctx.strokeStyle = color; ctx.lineWidth = 3.5; ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = 1.75; ctx.stroke();
       drawPlug(x1, cam2Y, color); drawPlug(x2, p3Y, color); drawPlug(x2, p4Y, color);
       drawLabel(x2 + 20, p3Y + 4, 'P3', color, 8);
       drawLabel(x2 + 20, p4Y + 4, 'P4', color, 8);
@@ -469,7 +480,7 @@ export default function App() {
       for (let i = 0; i < n; i++) {
         const cy1 = y1 - totalSpread / 2 + i * 36;
         const cy2 = y2 - totalSpread / 2 + i * 36;
-        drawHangingCable(x1, cy1, x2, cy2, 25 + i * 6, color, 4);
+        drawHangingCable(x1, cy1, x2, cy2, 25 + i * 6, color, 2);
         drawPlug(x1, cy1, color);
         drawPlug(x2, cy2, color);
         drawLabel((x1 + x2) / 2, Math.max(cy1, cy2) + 30 + i * 6 + 14, `CAM ${i + 1}`, 'rgba(255,255,255,0.35)', 9);
@@ -482,24 +493,30 @@ export default function App() {
       const usbcColor = GROUP_COLORS.compact;  // green
       const fiberColor = GROUP_COLORS.fiber;    // blue
       const hubImg = hubImgRef.current;
-      const hubW = 56;
-      const hubH = 38;
-      const hubX = x1 + (x2 - x1) * 0.5;  // center between camera and processor
+      const hubW = 70;
+      const hubH = 48;
+      // Dynamically center hubs in the cable zone
+      const cableZone = document.querySelector('[data-strip="cable-zone"]');
+      const czRect = cableZone?.getBoundingClientRect();
+      const hubX = czRect ? (czRect.left + czRect.right) / 2 : x1 + (x2 - x1) * 0.73;
       const totalSpread = numHubs > 1 ? (numHubs - 1) * (hubH + 16) : 0;
       const baseY = (y1 + y2) / 2 - totalSpread / 2;
 
       for (let h = 0; h < numHubs; h++) {
-        const hubCenterY = baseY + h * (hubH + 16);
+        const hubCenterY = baseY + h * (hubH + 24);
         const hubLeft = hubX - hubW / 2;
         const hubRight = hubX + hubW / 2;
         const hubTop = hubCenterY - hubH / 2;
-        // Camera → Hub: green USB-C cable (attach tightly to hub left edge)
-        const camY = numHubs === 1 ? y1 : y1 - totalSpread / 2 + h * (hubH + 16);
-        drawHangingCable(x1, camY, hubLeft, hubCenterY, 20 + h * 5, usbcColor, 4);
-        drawPlug(x1, camY, usbcColor);
-        // Hub → Processor: blue fiber cable (attach tightly to hub right edge)
-        const procY = numHubs === 1 ? y2 : y2 - totalSpread / 2 + h * (hubH + 16);
-        drawHangingCable(hubRight, hubCenterY, x2, procY, 20 + h * 5, fiberColor, 4);
+        // 2 green USB-C cables IN (from camera side to hub left edge)
+        const camBaseY = numHubs === 1 ? y1 : y1 - totalSpread / 2 + h * (hubH + 24);
+        const greenSpread = 6; // vertical offset for the 2 green cables
+        drawHangingCable(x1, camBaseY - greenSpread, hubLeft + 4, hubCenterY - greenSpread, 8 + h * 2, usbcColor, 1.25);
+        drawHangingCable(x1, camBaseY + greenSpread, hubLeft + 4, hubCenterY + greenSpread, 10 + h * 2, usbcColor, 1.25);
+        drawPlug(x1, camBaseY - greenSpread, usbcColor);
+        drawPlug(x1, camBaseY + greenSpread, usbcColor);
+        // 1 blue fiber cable OUT (from hub right edge to processor)
+        const procY = numHubs === 1 ? y2 : y2 - totalSpread / 2 + h * (hubH + 24);
+        drawHangingCable(hubRight, hubCenterY, x2, procY, 20 + h * 5, fiberColor, 2.25);
         drawPlug(x2, procY, fiberColor);
         // Draw hub image (or fallback box)
         if (hubImg) {
@@ -509,7 +526,6 @@ export default function App() {
           ctx.drawImage(hubImg, hubLeft, hubTop, hubW, hubH);
           ctx.restore();
         } else {
-          // Fallback: gold box
           ctx.fillStyle = 'rgba(232,182,0,0.12)';
           ctx.strokeStyle = '#E8B600';
           ctx.lineWidth = 2;
@@ -522,14 +538,13 @@ export default function App() {
           ctx.textAlign = 'center';
           ctx.fillText('HUB', hubX, hubCenterY + 3);
         }
-        // Port label
         if (numHubs > 1) {
           drawLabel(hubX, hubTop - 6, `PORT ${h + 1}`, 'rgba(255,255,255,0.3)', 8);
         }
       }
     } else {
       // Single cable
-      drawHangingCable(x1, y1, x2, y2, 40, color, 5);
+      drawHangingCable(x1, y1, x2, y2, 40, color, 2.5);
       drawPlug(x1, y1, color);
       drawPlug(x2, y2, color);
     }
@@ -744,7 +759,7 @@ export default function App() {
     const CAM_GROUPS = [
       { label: 'XSTREAM FIBER', groupId: 'fiber', ids: ['helios', 'galileo', 'phoenix-gold', 'phoenix', 'phoenix-cr', 'xs2'] },
       { label: 'XSTREAM USB-C', groupId: 'compact', ids: ['os2-gold', 'os2', 'xsm', 'xstream', 'sugarcube'] },
-      { label: 'ETHERNET', groupId: 'ccm', ids: ['ccm', 'ccs'] },
+      { label: 'ONBOARD MEMORY', groupId: 'ccm', ids: ['ccm', 'ccs'] },
     ];
 
     return (
@@ -979,7 +994,7 @@ export default function App() {
               { label: 'FLEXIBLE', ids: ['rtv', 'rt4', 'rt3'], color: GROUP_COLORS.fiber },
               { label: 'PORTABLE', ids: ['tc2-2', 'tc2-1'], color: GROUP_COLORS.compact },
               { label: 'MINIATURE', ids: ['tb3'], color: GROUP_COLORS.compact },
-              { label: 'CCM', ids: ['viper'], color: GROUP_COLORS.ccm },
+              { label: 'ETHERNET', ids: ['viper'], color: GROUP_COLORS.ccm },
             ];
             return PROC_GROUPS.map((group, gi) => {
               const gc = group.color;
@@ -1102,21 +1117,7 @@ export default function App() {
           }}>
           {selectedFamily && selectedProc && (
             <div style={{ fontSize: 10, fontWeight: 700, color: '#4080D0', letterSpacing: '0.08em', fontFamily: "'JetBrains Mono', monospace", textAlign: 'center', opacity: 0.7 }}>
-              {needsXSLinkHub(selectedFamily, selectedProc, hybridModes[selectedFamily]) ? (
-                (() => {
-                  const p = catalog.processors.find(pr => pr.id === selectedProc);
-                  const numHubs = p?.hubSupport?.maxHubs || 1;
-                  return (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                      {Array.from({ length: numHubs }).map((_, i) => (
-                        <img key={i} src="./images/xslink-hub.png" alt={`XSLink Hub ${i + 1}`} style={{ width: 44, height: 30, objectFit: 'contain', opacity: 0.85, filter: 'drop-shadow(0 0 6px rgba(232,182,0,0.3))' }} />
-                      ))}
-                      <div style={{ color: '#E8B600', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em' }}>{numHubs}× XSLINK</div>
-                      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)' }}>USB-C → Fiber</div>
-                    </div>
-                  );
-                })()
-              ) : (() => {
+              {needsXSLinkHub(selectedFamily, selectedProc, hybridModes[selectedFamily]) ? null : (() => {
                 const effGrp = effectiveGroup(selectedFamily);
                 const isEth = effGrp === 'ccm';
                 const modeLabel = connectionModes.find(m => m.id === connType)?.label;
@@ -1200,7 +1201,7 @@ export default function App() {
             const CAM_GROUPS = [
               { label: 'XSTREAM FIBER', groupId: 'fiber', ids: ['helios', 'galileo', 'phoenix-gold', 'phoenix', 'phoenix-cr', 'xs2'] },
               { label: 'XSTREAM USB-C', groupId: 'compact', ids: ['os2-gold', 'os2', 'xsm', 'xstream', 'sugarcube'] },
-              { label: 'ETHERNET', groupId: 'ccm', ids: ['ccm', 'ccs'] },
+              { label: 'ONBOARD MEMORY', groupId: 'ccm', ids: ['ccm', 'ccs'] },
             ];
             return CAM_GROUPS.map((group, gi) => {
               const gc = GROUP_COLORS[group.groupId];
@@ -1412,7 +1413,7 @@ export default function App() {
               {selectedProc && !selectedFamily && (
                 <ProcessorHero proc={activeProc} conns={availableConns} allConns={catalog.connections} selectedConn={selectedConn} procConfig={procConfig} setProcConfig={setProcConfig} />
               )}
-              {selectedFamily && activeModel && (
+              {selectedFamily && activeModel && !selectedProc && (
                 <CameraHero
                   key={activeFamily.id}
                   family={activeFamily}
@@ -1426,6 +1427,57 @@ export default function App() {
                   onConnType={setConnType}
                   hybridMode={hybridModes[selectedFamily]}
                 />
+              )}
+              {selectedFamily && activeModel && selectedProc && (
+                <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
+                  {/* Stage navigation arrows */}
+                  <button onClick={() => setDetailStage(detailStage === 'camera' ? 'processor' : 'camera')} style={{
+                    position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+                    zIndex: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 8,
+                  }}>
+                    <svg width="32" height="64" viewBox="0 0 32 64" fill="none">
+                      <path d="M24 8 L8 32 L24 56" stroke="#E8B600" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.6" />
+                    </svg>
+                  </button>
+                  <button onClick={() => setDetailStage(detailStage === 'camera' ? 'processor' : 'camera')} style={{
+                    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                    zIndex: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 8,
+                  }}>
+                    <svg width="32" height="64" viewBox="0 0 32 64" fill="none">
+                      <path d="M8 8 L24 32 L8 56" stroke="#E8B600" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.6" />
+                    </svg>
+                  </button>
+                  {/* Stage indicator dots */}
+                  <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+                    {['camera', 'processor'].map(s => (
+                      <button key={s} onClick={() => setDetailStage(s)} style={{
+                        width: detailStage === s ? 24 : 8, height: 8, borderRadius: 4,
+                        background: detailStage === s ? '#E8B600' : 'rgba(255,255,255,0.2)',
+                        border: 'none', cursor: 'pointer', transition: 'all 0.3s ease',
+                      }} />
+                    ))}
+                  </div>
+                  {/* Content */}
+                  <div style={{ height: '100%', overflow: 'auto' }}>
+                    {detailStage === 'camera' ? (
+                      <CameraHero
+                        key={activeFamily.id}
+                        family={activeFamily}
+                        model={activeModel}
+                        models={models}
+                        selectedModel={selectedModel}
+                        onSelectModel={selectModel}
+                        conn={activeConn}
+                        proc={activeProc}
+                        connType={connType}
+                        onConnType={setConnType}
+                        hybridMode={hybridModes[selectedFamily]}
+                      />
+                    ) : (
+                      <ProcessorHero proc={activeProc} conns={availableConns} allConns={catalog.connections} selectedConn={selectedConn} procConfig={procConfig} setProcConfig={setProcConfig} />
+                    )}
+                  </div>
+                </div>
               )}
             </>
           )}
@@ -2008,7 +2060,7 @@ function ComparisonTable({ catalog, selectedFamily }) {
   const GROUPS = [
     { label: 'XSTREAM FIBER', groupId: 'fiber', ids: ['helios', 'galileo', 'phoenix-gold', 'phoenix', 'phoenix-cr', 'xs2'] },
     { label: 'XSTREAM USB-C', groupId: 'compact', ids: ['os2-gold', 'os2', 'xsm', 'xstream', 'sugarcube'] },
-    { label: 'ETHERNET', groupId: 'ccm', ids: ['ccm', 'ccs'] },
+    { label: 'ONBOARD MEMORY', groupId: 'ccm', ids: ['ccm', 'ccs'] },
   ];
 
   const [activeGroup, setActiveGroup] = useState(() => {
