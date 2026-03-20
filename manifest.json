@@ -1,0 +1,23 @@
+{
+  "name": "IDT System Configurator",
+  "short_name": "IDT Config",
+  "description": "Configure IDT high-speed camera systems",
+  "start_url": "/idt-configurator-live/",
+  "scope": "/idt-configurator-live/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
