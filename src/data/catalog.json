@@ -11,6 +11,7 @@
       "desc": "Dual-channel fiber — 1 camera at full speed or 2 cameras at half speed",
       "group": "flexible",
       "connectionOptions": ["single", "dual"],
+      "hubSupport": { "maxHubs": 2, "maxCameras": 4 },
       "configOptions": {
         "ddr": [256, 512, 1024],
         "ddrUnit": "MB",
@@ -29,6 +30,7 @@
       "desc": "Quad-channel fiber — up to 2 cameras at full speed or 4 cameras at half speed",
       "group": "flexible",
       "connectionOptions": ["single", "dual"],
+      "hubSupport": { "maxHubs": 4, "maxCameras": 8 },
       "configOptions": {
         "ddr": [256, 512, 1024],
         "ddrUnit": "MB",
@@ -48,6 +50,7 @@
       "desc": "Hybrid — 1 fiber camera or 2 USB-C cameras",
       "group": "flexible",
       "connectionOptions": ["single"],
+      "hubSupport": { "maxHubs": 1, "maxCameras": 2, "directUsbc": 2 },
       "configOptions": {
         "ram": 128,
         "ramUnit": "GB",
@@ -66,7 +69,8 @@
       "interface": "XStream Fiber · 1CH",
       "desc": "Portable single-channel fiber recorder",
       "group": "portable",
-      "connectionOptions": ["single"]
+      "connectionOptions": ["single"],
+      "hubSupport": { "maxHubs": 1, "maxCameras": 2 }
     },
     {
       "id": "tc2-2",
@@ -77,7 +81,8 @@
       "interface": "XStream Fiber · 2CH",
       "desc": "Portable dual-channel fiber — 1 camera at full speed or 2 cameras at half speed",
       "group": "portable",
-      "connectionOptions": ["single", "dual"]
+      "connectionOptions": ["single", "dual"],
+      "hubSupport": { "maxHubs": 2, "maxCameras": 4 }
     },
     {
       "id": "tb3",
@@ -102,6 +107,14 @@
       "connectionOptions": ["single"]
     }
   ],
+  "xslinkHub": {
+    "name": "XSLink Hub",
+    "description": "Bridges 2 USB-C cameras to 1 fiber port",
+    "inputType": "xstream-usbc",
+    "outputType": "xstream-fiber",
+    "camerasPerHub": 2,
+    "image": "images/xslink-hub.png"
+  },
   "connections": [
     {
       "id": "xstream-fiber",
@@ -129,11 +142,11 @@
     }
   ],
   "compatibility": {
-    "rt4": ["xstream-fiber"],
-    "rtv": ["xstream-fiber"],
+    "rt4": ["xstream-fiber", "xstream-usbc"],
+    "rtv": ["xstream-fiber", "xstream-usbc"],
     "rt3": ["xstream-fiber", "xstream-usbc"],
-    "tc2-1": ["xstream-fiber"],
-    "tc2-2": ["xstream-fiber"],
+    "tc2-1": ["xstream-fiber", "xstream-usbc"],
+    "tc2-2": ["xstream-fiber", "xstream-usbc"],
     "tb3": ["xstream-usbc"],
     "viper": ["ethernet"]
   },
@@ -156,8 +169,8 @@
     { "id": "phoenix", "name": "Phoenix", "group": "fiber", "dualConnection": true, "mode": "streaming" },
     { "id": "phoenix-cr", "name": "Phoenix CR", "group": "fiber", "dualConnection": false, "mode": "streaming" },
     { "id": "xs2", "name": "XS II", "group": "fiber", "dualConnection": false, "mode": "streaming" },
-    { "id": "os2-gold", "name": "OS II GOLD", "group": "compact", "mode": "streaming" },
-    { "id": "os2", "name": "OS II", "group": "compact", "mode": "streaming" },
+    { "id": "os2-gold", "name": "OS II GOLD", "group": "compact", "hybrid": true, "mode": "streaming" },
+    { "id": "os2", "name": "OS II", "group": "compact", "hybrid": true, "mode": "streaming" },
     { "id": "xsm", "name": "XSM", "group": "compact", "mode": "streaming" },
     { "id": "xstream", "name": "XStream Stick", "group": "compact", "mode": "streaming" },
     { "id": "sugarcube", "name": "SugarCube™", "group": "compact", "mode": "streaming" },

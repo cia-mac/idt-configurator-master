@@ -40,7 +40,7 @@ const CAM_ANGLES = {
   os2:            [`${A}os2-3qtr.png`,`${A}os2-front.png`,`${A}os2-back.png`,`${A}os2-left.png`,`${A}os2-side.png`,`${A}os2-top.png`],
   xsm:            [`${A}xsm-3qtr.png`,`${A}xsm-front.png`,`${A}xsm-back.png`,`${A}xsm-left.png`,`${A}xsm-side.png`,`${A}xsm-top.png`],
   xstream:        [`${A}xstream-3qtr.png`,`${A}xstream-front.png`,`${A}xstream-back.png`,`${A}xstream-left.png`,`${A}xstream-side.png`,`${A}xstream-top.png`],
-  sugarcube:      [`${A}sugarcube-3qtr.png`,`${A}sugarcube-alt.png`],
+  sugarcube:      [`${A}sugarcube-alt.png`],
   ccm:            [`${A}ccm-3qtr.png`,`${A}ccm-front.png`,`${A}ccm-back.png`,`${A}ccm-left.png`,`${A}ccm-side.png`,`${A}ccm-top.png`],
   ccs:            [`${A}ccs-3qtr.png`,`${A}ccs-front.png`,`${A}ccs-back.png`,`${A}ccs-left.png`,`${A}ccs-side.png`,`${A}ccs-top.png`],
 };
@@ -81,6 +81,45 @@ const CONN_ICONS = {
   ethernet: EthernetIcon,
 };
 
+// ─── XSLINK HUB DETECTION ───────────────────────────────────
+// Returns true when a USB-C camera is paired with a fiber-native processor (requires hub)
+// hybridMode: optional override for hybrid cameras ('streaming' or 'ethernet')
+function needsXSLinkHub(familyId, procId, hybridMode) {
+  if (!familyId || !procId) return false;
+  const fam = catalog.camera_families.find(f => f.id === familyId);
+  const proc = catalog.processors.find(p => p.id === procId);
+  if (!fam || !proc) return false;
+  // Hybrid cameras in ethernet mode never need a hub
+  if (fam.hybrid && hybridMode === 'ethernet') return false;
+  // Hub needed when: camera is USB-C (compact) AND processor has hubSupport (fiber-native)
+  return fam.group === 'compact' && !!proc.hubSupport;
+}
+
+// Returns connection label based on hub status
+function getConnectionLabel(familyId, procId, hybridMode) {
+  if (!familyId || !procId) return null;
+  const fam = catalog.camera_families.find(f => f.id === familyId);
+  const proc = catalog.processors.find(p => p.id === procId);
+  if (!fam || !proc) return null;
+  // Hybrid cameras in ethernet mode
+  if (fam.hybrid && hybridMode === 'ethernet') return 'ETHERNET (direct)';
+  if (fam.group === 'compact' && proc.hubSupport) return 'XSTREAM USB-C via XSLink Hub';
+  if (fam.group === 'compact' && proc.id === 'tb3') return 'XSTREAM USB-C (direct)';
+  return null;
+}
+
+function HubIcon({ active }) {
+  const c = active ? '#E8B600' : '#666';
+  return (
+    <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+      <rect x="2" y="1" width="16" height="12" rx="2" stroke={c} strokeWidth="1.2" />
+      <circle cx="7" cy="7" r="2" fill={c} opacity="0.6" />
+      <circle cx="13" cy="7" r="2" fill={c} opacity="0.6" />
+      <line x1="9" y1="7" x2="11" y2="7" stroke={c} strokeWidth="1" />
+    </svg>
+  );
+}
+
 // ─── GROUP COLORS (top→bottom: red / green / blue) ───────────
 // Luiz v1.0: BGR — Fiber=Blue, Compact/TB=Green, CCM/Ethernet=Red
 const GROUP_COLORS = {
@@ -100,12 +139,21 @@ export default function App() {
   const [connType, setConnType] = useState('single'); // 'single' (1CH) or 'dual' (2CH)
   const [heroView, setHeroView] = useState('detail'); // 'detail' or 'compare'
   const [procConfig, setProcConfig] = useState({}); // { ddr: 256, storage: 4 }
+  // Hybrid cameras (OS II GOLD, OS II): 'streaming' (USB-C) or 'ethernet'
+  const [hybridModes, setHybridModes] = useState({ 'os2-gold': 'streaming', os2: 'streaming' });
   // Refs for cable drawing
   const mainRef = React.useRef(null);
   const camRefs = React.useRef({});
   const procRefs = React.useRef({});
   const canvasRef = React.useRef(null);
   const camStripRef = React.useRef(null);
+  // Preload XSLink Hub image for canvas drawing
+  const hubImgRef = React.useRef(null);
+  useEffect(() => {
+    const img = new Image();
+    img.src = './images/xslink-hub.png';
+    img.onload = () => { hubImgRef.current = img; };
+  }, []);
   const procStripRef = React.useRef(null);
   // Master Engine: unified configurator — all cameras, all processors, all connections
 
@@ -120,9 +168,16 @@ export default function App() {
 
   // ─── HELPERS ───────────────────────────────────────────────
   const connsForProc = (pid) => catalog.compatibility[pid] || [];
-  const connsForFamily = (fid) => {
+  // Effective group for a family (respects hybrid mode)
+  const effectiveGroup = (fid) => {
     const fam = catalog.camera_families.find(f => f.id === fid);
-    return fam ? catalog.connections.filter(c => c.group === fam.group).map(c => c.id) : [];
+    if (!fam) return null;
+    if (fam.hybrid && hybridModes[fid] === 'ethernet') return 'ccm';
+    return fam.group;
+  };
+  const connsForFamily = (fid) => {
+    const group = effectiveGroup(fid);
+    return group ? catalog.connections.filter(c => c.group === group).map(c => c.id) : [];
   };
   const procsForConn = (cid) =>
     catalog.processors.filter(p => (catalog.compatibility[p.id] || []).includes(cid)).map(p => p.id);
@@ -253,7 +308,8 @@ export default function App() {
     const isMulti = connType === 'multi';
     const proc = catalog.processors.find(p => p.id === selectedProc);
     const fam = catalog.camera_families.find(f => f.id === selectedFamily);
-    const color = fam ? (GROUP_COLORS[fam.group] || '#4080D0') : '#4080D0';
+    const effGroup = fam?.hybrid && hybridModes[selectedFamily] === 'ethernet' ? 'ccm' : fam?.group;
+    const color = effGroup ? (GROUP_COLORS[effGroup] || '#4080D0') : '#4080D0';
     const spread = 35;
 
     const drawHangingCable = (xa, ya, xb, yb, sag, clr, w) => {
@@ -417,13 +473,66 @@ export default function App() {
         drawPlug(x2, cy2, color);
         drawLabel((x1 + x2) / 2, Math.max(cy1, cy2) + 30 + i * 6 + 14, `CAM ${i + 1}`, 'rgba(255,255,255,0.35)', 9);
       }
+    } else if (needsXSLinkHub(selectedFamily, selectedProc, hybridModes[selectedFamily])) {
+      // Hub cable: Camera →(green USB-C)→ [Hub Image] →(blue Fiber)→ Processor
+      // One hub per fiber port on the processor
+      const hubSupport = proc?.hubSupport;
+      const numHubs = hubSupport?.maxHubs || 1;
+      const usbcColor = GROUP_COLORS.compact;  // green
+      const fiberColor = GROUP_COLORS.fiber;    // blue
+      const hubImg = hubImgRef.current;
+      const hubW = 56;
+      const hubH = 38;
+      const hubX = x1 + (x2 - x1) * 0.5;  // center between camera and processor
+      const totalSpread = numHubs > 1 ? (numHubs - 1) * (hubH + 16) : 0;
+      const baseY = (y1 + y2) / 2 - totalSpread / 2;
+
+      for (let h = 0; h < numHubs; h++) {
+        const hubCenterY = baseY + h * (hubH + 16);
+        const hubLeft = hubX - hubW / 2;
+        const hubRight = hubX + hubW / 2;
+        const hubTop = hubCenterY - hubH / 2;
+        // Camera → Hub: green USB-C cable (attach tightly to hub left edge)
+        const camY = numHubs === 1 ? y1 : y1 - totalSpread / 2 + h * (hubH + 16);
+        drawHangingCable(x1, camY, hubLeft, hubCenterY, 20 + h * 5, usbcColor, 4);
+        drawPlug(x1, camY, usbcColor);
+        // Hub → Processor: blue fiber cable (attach tightly to hub right edge)
+        const procY = numHubs === 1 ? y2 : y2 - totalSpread / 2 + h * (hubH + 16);
+        drawHangingCable(hubRight, hubCenterY, x2, procY, 20 + h * 5, fiberColor, 4);
+        drawPlug(x2, procY, fiberColor);
+        // Draw hub image (or fallback box)
+        if (hubImg) {
+          ctx.save();
+          ctx.shadowColor = 'rgba(232,182,0,0.25)';
+          ctx.shadowBlur = 10;
+          ctx.drawImage(hubImg, hubLeft, hubTop, hubW, hubH);
+          ctx.restore();
+        } else {
+          // Fallback: gold box
+          ctx.fillStyle = 'rgba(232,182,0,0.12)';
+          ctx.strokeStyle = '#E8B600';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(hubLeft, hubTop, hubW, hubH, 6);
+          ctx.fill();
+          ctx.stroke();
+          ctx.font = 'bold 8px "JetBrains Mono", monospace';
+          ctx.fillStyle = '#E8B600';
+          ctx.textAlign = 'center';
+          ctx.fillText('HUB', hubX, hubCenterY + 3);
+        }
+        // Port label
+        if (numHubs > 1) {
+          drawLabel(hubX, hubTop - 6, `PORT ${h + 1}`, 'rgba(255,255,255,0.3)', 8);
+        }
+      }
     } else {
       // Single cable
       drawHangingCable(x1, y1, x2, y2, 40, color, 5);
       drawPlug(x1, y1, color);
       drawPlug(x2, y2, color);
     }
-  }, [selectedFamily, selectedProc, connType]);
+  }, [selectedFamily, selectedProc, connType, hybridModes]);
 
   // Redraw on scroll events from either strip
   useEffect(() => {
@@ -451,7 +560,7 @@ export default function App() {
     if (selectedProc) conns = conns.filter(cid => connsForProc(selectedProc).includes(cid));
     if (selectedFamily) conns = conns.filter(cid => connsForFamily(selectedFamily).includes(cid));
     return conns;
-  }, [selectedProc, selectedFamily]);
+  }, [selectedProc, selectedFamily, hybridModes]);
 
   const availableProcs = useMemo(() => {
     let procs = catalog.processors.map(p => p.id);
@@ -461,21 +570,28 @@ export default function App() {
       procs = procs.filter(pid => connsForProc(pid).some(cid => famConns.includes(cid)));
     }
     return procs;
-  }, [selectedConn, selectedFamily]);
+  }, [selectedConn, selectedFamily, hybridModes]);
 
   const availableFamilies = useMemo(() => {
     let fams = catalog.camera_families;
     if (selectedConn) {
       const conn = catalog.connections.find(c => c.id === selectedConn);
-      if (conn) fams = fams.filter(f => f.group === conn.group);
+      if (conn) fams = fams.filter(f => {
+        // Hybrid cameras available if their effective group OR base group matches
+        if (f.hybrid) return f.group === conn.group || conn.group === 'ccm';
+        return f.group === conn.group;
+      });
     }
     if (selectedProc) {
       const procConns = connsForProc(selectedProc);
       const procGroups = new Set(procConns.map(cid => catalog.connections.find(c => c.id === cid)?.group).filter(Boolean));
-      fams = fams.filter(f => procGroups.has(f.group));
+      fams = fams.filter(f => {
+        if (f.hybrid) return procGroups.has(f.group) || procGroups.has('ccm');
+        return procGroups.has(f.group);
+      });
     }
     return fams;
-  }, [selectedConn, selectedProc]);
+  }, [selectedConn, selectedProc, hybridModes]);
 
   const models = useMemo(() => {
     if (!selectedFamily) return [];
@@ -542,14 +658,23 @@ export default function App() {
       } else if (bridge.length === 0) {
         // Incompatible — clear proc, start reverse
         setSelectedProc(null); setSelectedConn(null);
-        if (famConns.length === 1) setSelectedConn(famConns[0]);
+        if (famConns.length === 1) {
+          setSelectedConn(famConns[0]);
+          const compatProcs = procsForConn(famConns[0]);
+          if (compatProcs.length === 1) setSelectedProc(compatProcs[0]);
+        }
       } else {
         setSelectedConn(null); // multiple bridges, user picks
       }
     } else {
       // Reverse flow — camera first
       setSelectedConn(null); setSelectedProc(null);
-      if (famConns.length === 1) setSelectedConn(famConns[0]);
+      if (famConns.length === 1) {
+        setSelectedConn(famConns[0]);
+        // Auto-select processor if only one compatible (e.g. ethernet → Viper)
+        const compatProcs = procsForConn(famConns[0]);
+        if (compatProcs.length === 1) setSelectedProc(compatProcs[0]);
+      }
     }
   }
 
@@ -618,7 +743,7 @@ export default function App() {
     const CAM_GROUPS = [
       { label: 'XSTREAM FIBER', groupId: 'fiber', ids: ['helios', 'galileo', 'phoenix-gold', 'phoenix', 'phoenix-cr', 'xs2'] },
       { label: 'XSTREAM USB-C', groupId: 'compact', ids: ['os2-gold', 'os2', 'xsm', 'xstream', 'sugarcube'] },
-      { label: 'ETHERNET', groupId: 'ccm', ids: ['ccs', 'ccm'] },
+      { label: 'ETHERNET', groupId: 'ccm', ids: ['ccm', 'ccs'] },
     ];
 
     return (
@@ -636,7 +761,7 @@ export default function App() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 12px', background: '#1A1A1A', borderBottom: '1px solid #222', flexShrink: 0 }}>
           {[
             { label: 'PROC', value: activeProc?.name },
-            { label: 'CONN', value: activeConn?.label },
+            { label: 'CONN', value: needsXSLinkHub(selectedFamily, selectedProc, hybridModes[selectedFamily]) ? 'via Hub' : activeConn?.label },
             { label: 'CAM', value: activeModel?.fullName || activeFamily?.name },
           ].map((seg, i) => (
             <React.Fragment key={seg.label}>
@@ -976,8 +1101,38 @@ export default function App() {
           }}>
           {selectedFamily && selectedProc && (
             <div style={{ fontSize: 10, fontWeight: 700, color: '#4080D0', letterSpacing: '0.08em', fontFamily: "'JetBrains Mono', monospace", textAlign: 'center', opacity: 0.7 }}>
-              {connectionModes.find(m => m.id === connType)?.label || connType.toUpperCase()}
-              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>click cable to toggle</div>
+              {needsXSLinkHub(selectedFamily, selectedProc, hybridModes[selectedFamily]) ? (
+                (() => {
+                  const p = catalog.processors.find(pr => pr.id === selectedProc);
+                  const numHubs = p?.hubSupport?.maxHubs || 1;
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                      {Array.from({ length: numHubs }).map((_, i) => (
+                        <img key={i} src="./images/xslink-hub.png" alt={`XSLink Hub ${i + 1}`} style={{ width: 44, height: 30, objectFit: 'contain', opacity: 0.85, filter: 'drop-shadow(0 0 6px rgba(232,182,0,0.3))' }} />
+                      ))}
+                      <div style={{ color: '#E8B600', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em' }}>{numHubs}× XSLINK</div>
+                      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.35)' }}>USB-C → Fiber</div>
+                    </div>
+                  );
+                })()
+              ) : (() => {
+                const effGrp = effectiveGroup(selectedFamily);
+                const isEth = effGrp === 'ccm';
+                const modeLabel = connectionModes.find(m => m.id === connType)?.label;
+                const canToggle = connectionModes.length > 1;
+                return (
+                  <>
+                    <div style={{ color: isEth ? '#D94040' : '#4080D0' }}>
+                      {isEth ? 'ETHERNET' : modeLabel || connType.toUpperCase()}
+                    </div>
+                    {isEth ? (
+                      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>direct to Viper</div>
+                    ) : canToggle ? (
+                      <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>click cable to toggle</div>
+                    ) : null}
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>
@@ -1023,6 +1178,15 @@ export default function App() {
                 }}>
                   {c.sublabel}
                 </div>
+                {isActive && c.id === 'xstream-usbc' && needsXSLinkHub(selectedFamily, selectedProc, hybridModes[selectedFamily]) && (
+                  <div style={{
+                    fontSize: 8, fontWeight: 700, letterSpacing: '0.08em',
+                    color: '#E8B600', background: 'rgba(232,182,0,0.1)',
+                    border: '1px solid rgba(232,182,0,0.25)', borderRadius: 3,
+                    padding: '2px 6px', marginTop: 4, whiteSpace: 'nowrap',
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}>VIA XSLINK HUB</div>
+                )}
               </div>
             );
           })}
@@ -1035,10 +1199,11 @@ export default function App() {
             const CAM_GROUPS = [
               { label: 'XSTREAM FIBER', groupId: 'fiber', ids: ['helios', 'galileo', 'phoenix-gold', 'phoenix', 'phoenix-cr', 'xs2'] },
               { label: 'XSTREAM USB-C', groupId: 'compact', ids: ['os2-gold', 'os2', 'xsm', 'xstream', 'sugarcube'] },
-              { label: 'ETHERNET', groupId: 'ccm', ids: ['ccs', 'ccm'] },
+              { label: 'ETHERNET', groupId: 'ccm', ids: ['ccm', 'ccs'] },
             ];
             return CAM_GROUPS.map((group, gi) => {
               const gc = GROUP_COLORS[group.groupId];
+              // All groups always visible — grey out incompatible cameras
               return (
               <div key={gi} style={{
                 margin: '6px 6px 0',
@@ -1060,6 +1225,7 @@ export default function App() {
                   const isAvail = availableFamilies.some(af => af.id === f.id);
                   const hasNarrow = selectedConn || selectedProc;
                   const isIncompat = hasNarrow && !isAvail;
+                  // Never hide cameras — grey out incompatible ones
                   return (
                     <button
                       key={f.id}
@@ -1070,9 +1236,9 @@ export default function App() {
                         borderRight: isActive ? `3px solid ${gc}` : '3px solid transparent',
                         borderBottom: '1px solid rgba(255,255,255,0.15)',
                         background: 'transparent',
-                        opacity: isIncompat ? 0.45 : 1,
+                        opacity: isIncompat ? 0.35 : 1,
                         filter: isIncompat ? 'grayscale(1)' : 'none',
-                        cursor: 'pointer',
+                        cursor: isIncompat ? 'default' : 'pointer',
                       }}
                       onClick={() => selectFamily(f.id)}
                     >
@@ -1093,6 +1259,37 @@ export default function App() {
                       }}>
                         {f.name}
                       </div>
+                      {/* Hybrid toggle for OS II GOLD / OS II */}
+                      {f.hybrid && (
+                        <div style={{ display: 'flex', gap: 0, marginTop: 6, borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.12)' }}>
+                          {[{ id: 'streaming', label: 'STREAMING', color: GROUP_COLORS.compact }, { id: 'ethernet', label: 'ETHERNET', color: GROUP_COLORS.ccm }].map(mode => {
+                            const isModeActive = hybridModes[f.id] === mode.id;
+                            return (
+                              <div key={mode.id} role="button" tabIndex={0} onClick={(e) => {
+                                e.stopPropagation();
+                                setHybridModes(prev => ({ ...prev, [f.id]: mode.id }));
+                                if (selectedFamily === f.id) {
+                                  const newGroup = mode.id === 'ethernet' ? 'ccm' : 'compact';
+                                  const newConns = catalog.connections.filter(c => c.group === newGroup).map(c => c.id);
+                                  if (newConns.length === 1) {
+                                    setSelectedConn(newConns[0]);
+                                    const compatProcs = catalog.processors.filter(p => (catalog.compatibility[p.id] || []).includes(newConns[0])).map(p => p.id);
+                                    if (compatProcs.length === 1) setSelectedProc(compatProcs[0]);
+                                    else setSelectedProc(null);
+                                  } else {
+                                    setSelectedConn(null); setSelectedProc(null);
+                                  }
+                                }
+                              }} style={{
+                                padding: '3px 8px', fontSize: 8, fontWeight: 700, letterSpacing: '0.08em',
+                                fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer',
+                                background: isModeActive ? `${mode.color}20` : 'transparent',
+                                color: isModeActive ? mode.color : 'rgba(255,255,255,0.3)',
+                              }}>{mode.label}</div>
+                            );
+                          })}
+                        </div>
+                      )}
                       {/* Connection mode badge on selected camera */}
                       {isActive && selectedProc && (connType === 'dual' || connType === 'dual2') && f.dualConnection && (
                         <div style={{
@@ -1144,7 +1341,7 @@ export default function App() {
         <div style={{ ...styles.hero, order: 5 }}>
           {/* Signal Chain Bar + View Toggle */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#1A1A1A', borderBottom: '1px solid #222', flexShrink: 0, padding: '0 24px' }}>
-            <SignalChainBar proc={activeProc} conn={activeConn} family={activeFamily} model={activeModel} />
+            <SignalChainBar proc={activeProc} conn={activeConn} family={activeFamily} model={activeModel} hybridMode={hybridModes[selectedFamily]} />
             <div style={{ display: 'flex', gap: 0 }}>
               {['detail', 'compare'].map(v => (
                 <button key={v} onClick={() => setHeroView(v)} style={{
@@ -1226,6 +1423,7 @@ export default function App() {
                   proc={activeProc}
                   connType={connType}
                   onConnType={setConnType}
+                  hybridMode={hybridModes[selectedFamily]}
                 />
               )}
             </>
@@ -1237,8 +1435,9 @@ export default function App() {
 }
 
 // ─── SIGNAL CHAIN BAR ────────────────────────────────────────
-function SignalChainBar({ proc, conn, family, model }) {
+function SignalChainBar({ proc, conn, family, model, hybridMode }) {
   // Luiz v1.0: Camera → Connection → Processor flow
+  const hubNeeded = needsXSLinkHub(family?.id, proc?.id, hybridMode);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 0' }}>
       <div style={styles.chainSegment}>
@@ -1248,12 +1447,31 @@ function SignalChainBar({ proc, conn, family, model }) {
         </span>
       </div>
       <span style={styles.chainArrow}>→</span>
-      <div style={styles.chainSegment}>
-        <span style={styles.chainLabel}>CONNECTION</span>
-        <span style={styles.chainValue}>
-          {conn ? `${conn.sublabel} ${conn.label}` : '—'}
-        </span>
-      </div>
+      {hubNeeded ? (
+        <>
+          <div style={styles.chainSegment}>
+            <span style={styles.chainLabel}>USB-C</span>
+            <span style={styles.chainValue}>XSTREAM</span>
+          </div>
+          <span style={styles.chainArrow}>→</span>
+          <div style={{ ...styles.chainSegment, background: 'rgba(232,182,0,0.08)', borderRadius: 4, padding: '4px 10px', border: '1px solid rgba(232,182,0,0.2)' }}>
+            <span style={{ ...styles.chainLabel, color: '#E8B600' }}>HUB</span>
+            <span style={{ ...styles.chainValue, color: '#E8B600' }}>XSLink</span>
+          </div>
+          <span style={styles.chainArrow}>→</span>
+          <div style={styles.chainSegment}>
+            <span style={styles.chainLabel}>FIBER</span>
+            <span style={styles.chainValue}>XSTREAM</span>
+          </div>
+        </>
+      ) : (
+        <div style={styles.chainSegment}>
+          <span style={styles.chainLabel}>CONNECTION</span>
+          <span style={styles.chainValue}>
+            {conn ? `${conn.sublabel} ${conn.label}` : '—'}
+          </span>
+        </div>
+      )}
       <span style={styles.chainArrow}>→</span>
       <div style={styles.chainSegment}>
         <span style={styles.chainLabel}>PROCESSOR</span>
@@ -1404,7 +1622,7 @@ const RESOLUTION_TIERS = [
 ];
 
 // ─── CAMERA HERO ─────────────────────────────────────────────
-function CameraHero({ family, model, models, selectedModel, onSelectModel, conn, proc, connType, onConnType }) {
+function CameraHero({ family, model, models, selectedModel, onSelectModel, conn, proc, connType, onConnType, hybridMode }) {
   if (!model) return null;
   // FPS logic:
   // Dual-capable families (galileo, phoenix-gold, phoenix): spec FPS = dual (2CH) speed, single = half
@@ -1467,7 +1685,7 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
       {/* ── 1. NAME — top ── */}
       <div style={{ width: '100%', textAlign: 'center', marginTop: 24, marginBottom: 0, flexShrink: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(232,182,0,0.5)', letterSpacing: '0.14em' }}>
-          {family.group === 'fiber' ? 'XSTREAM FIBER' : family.group === 'compact' ? 'XSTREAM USB-C' : 'ETHERNET'}
+          {getConnectionLabel(family.id, proc?.id, hybridMode) || (family.group === 'fiber' ? 'XSTREAM FIBER' : (family.hybrid && hybridMode === 'ethernet') ? 'ETHERNET' : family.group === 'compact' ? 'XSTREAM USB-C' : 'ETHERNET')}
         </div>
         <div style={{ fontSize: 47, fontWeight: 300, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.1, marginTop: 4 }}>
           {model.fullName}
@@ -1789,7 +2007,7 @@ function ComparisonTable({ catalog, selectedFamily }) {
   const GROUPS = [
     { label: 'XSTREAM FIBER', groupId: 'fiber', ids: ['helios', 'galileo', 'phoenix-gold', 'phoenix', 'phoenix-cr', 'xs2'] },
     { label: 'XSTREAM USB-C', groupId: 'compact', ids: ['os2-gold', 'os2', 'xsm', 'xstream', 'sugarcube'] },
-    { label: 'ETHERNET', groupId: 'ccm', ids: ['ccs', 'ccm'] },
+    { label: 'ETHERNET', groupId: 'ccm', ids: ['ccm', 'ccs'] },
   ];
 
   const [activeGroup, setActiveGroup] = useState(() => {
