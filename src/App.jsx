@@ -392,23 +392,23 @@ export default function App() {
       const splitX = czR ? (czR.left + czR.right) / 2 : x1 + (x2 - x1) * 0.73;
       const splitY = y2;
       // Trunk — camera to split point
-      drawHangingCable(x1, y1, splitX, splitY, 30, color, 3);
+      drawHangingCable(x1, y1, splitX, splitY, 30, color, 2.4);
       // Split node
       drawSplitNode(splitX, splitY, color);
       // Branch 1 → PORT 1 (short straight-ish line up)
       ctx.beginPath(); ctx.moveTo(splitX, splitY);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, port1Y - 5, x2, port1Y);
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 3.5; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 2.9; ctx.lineCap = 'round'; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(splitX, splitY);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, port1Y - 5, x2, port1Y);
-      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.stroke();
       // Branch 2 → PORT 2 (short straight-ish line down)
       ctx.beginPath(); ctx.moveTo(splitX, splitY);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, port2Y + 5, x2, port2Y);
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 3.5; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 2.9; ctx.lineCap = 'round'; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(splitX, splitY);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, port2Y + 5, x2, port2Y);
-      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.stroke();
       // Plugs
       drawPlug(x1, y1, color);
       drawPlug(x2, port1Y, color);
@@ -429,22 +429,22 @@ export default function App() {
       const czR2 = czEl2?.getBoundingClientRect();
       const splitX = czR2 ? (czR2.left + czR2.right) / 2 : x1 + (x2 - x1) * 0.73;
       // Trunk 1
-      drawHangingCable(x1, cam1Y, splitX, fork1Y, 20, color, 2.5);
+      drawHangingCable(x1, cam1Y, splitX, fork1Y, 20, color, 2.0);
       drawSplitNode(splitX, fork1Y, color);
       // Branch P1
       ctx.beginPath(); ctx.moveTo(splitX, fork1Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p1Y - 4, x2, p1Y);
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(splitX, fork1Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p1Y - 4, x2, p1Y);
-      ctx.strokeStyle = color; ctx.lineWidth = 1.75; ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.stroke();
       // Branch P2
       ctx.beginPath(); ctx.moveTo(splitX, fork1Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p2Y + 4, x2, p2Y);
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(splitX, fork1Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p2Y + 4, x2, p2Y);
-      ctx.strokeStyle = color; ctx.lineWidth = 1.75; ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.stroke();
       drawPlug(x1, cam1Y, color); drawPlug(x2, p1Y, color); drawPlug(x2, p2Y, color);
       drawLabel(x2 + 20, p1Y + 4, 'P1', color, 8);
       drawLabel(x2 + 20, p2Y + 4, 'P2', color, 8);
@@ -454,20 +454,20 @@ export default function App() {
       const fork2Y = y2 + forkSpread;
       const p3Y = fork2Y - portSpread;
       const p4Y = fork2Y + portSpread;
-      drawHangingCable(x1, cam2Y, splitX, fork2Y, 25, color, 2.5);
+      drawHangingCable(x1, cam2Y, splitX, fork2Y, 25, color, 2.0);
       drawSplitNode(splitX, fork2Y, color);
       ctx.beginPath(); ctx.moveTo(splitX, fork2Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p3Y - 4, x2, p3Y);
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(splitX, fork2Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p3Y - 4, x2, p3Y);
-      ctx.strokeStyle = color; ctx.lineWidth = 1.75; ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(splitX, fork2Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p4Y + 4, x2, p4Y);
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(splitX, fork2Y);
       ctx.quadraticCurveTo(splitX + (x2 - splitX) * 0.5, p4Y + 4, x2, p4Y);
-      ctx.strokeStyle = color; ctx.lineWidth = 1.75; ctx.stroke();
+      ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.stroke();
       drawPlug(x1, cam2Y, color); drawPlug(x2, p3Y, color); drawPlug(x2, p4Y, color);
       drawLabel(x2 + 20, p3Y + 4, 'P3', color, 8);
       drawLabel(x2 + 20, p4Y + 4, 'P4', color, 8);
@@ -480,7 +480,7 @@ export default function App() {
       for (let i = 0; i < n; i++) {
         const cy1 = y1 - totalSpread / 2 + i * 36;
         const cy2 = y2 - totalSpread / 2 + i * 36;
-        drawHangingCable(x1, cy1, x2, cy2, 25 + i * 6, color, 2);
+        drawHangingCable(x1, cy1, x2, cy2, 25 + i * 6, color, 1.6);
         drawPlug(x1, cy1, color);
         drawPlug(x2, cy2, color);
         drawLabel((x1 + x2) / 2, Math.max(cy1, cy2) + 30 + i * 6 + 14, `CAM ${i + 1}`, 'rgba(255,255,255,0.35)', 9);
@@ -510,13 +510,13 @@ export default function App() {
         // 2 green USB-C cables IN (from camera side to hub left edge)
         const camBaseY = numHubs === 1 ? y1 : y1 - totalSpread / 2 + h * (hubH + 24);
         const greenSpread = 6; // vertical offset for the 2 green cables
-        drawHangingCable(x1, camBaseY - greenSpread, hubLeft + 4, hubCenterY - greenSpread, 8 + h * 2, usbcColor, 1.25);
-        drawHangingCable(x1, camBaseY + greenSpread, hubLeft + 4, hubCenterY + greenSpread, 10 + h * 2, usbcColor, 1.25);
+        drawHangingCable(x1, camBaseY - greenSpread, hubLeft + 12, hubCenterY - greenSpread, 8 + h * 2, usbcColor, 1.0);
+        drawHangingCable(x1, camBaseY + greenSpread, hubLeft + 12, hubCenterY + greenSpread, 10 + h * 2, usbcColor, 1.0);
         drawPlug(x1, camBaseY - greenSpread, usbcColor);
         drawPlug(x1, camBaseY + greenSpread, usbcColor);
         // 1 blue fiber cable OUT (from hub right edge to processor)
         const procY = numHubs === 1 ? y2 : y2 - totalSpread / 2 + h * (hubH + 24);
-        drawHangingCable(hubRight, hubCenterY, x2, procY, 20 + h * 5, fiberColor, 2.25);
+        drawHangingCable(hubRight, hubCenterY, x2, procY, 20 + h * 5, fiberColor, 1.85);
         drawPlug(x2, procY, fiberColor);
         // Draw hub image (or fallback box)
         if (hubImg) {
@@ -544,7 +544,7 @@ export default function App() {
       }
     } else {
       // Single cable
-      drawHangingCable(x1, y1, x2, y2, 40, color, 2.5);
+      drawHangingCable(x1, y1, x2, y2, 40, color, 2.0);
       drawPlug(x1, y1, color);
       drawPlug(x2, y2, color);
     }
@@ -1043,12 +1043,12 @@ export default function App() {
                     >
                       {/* Channel badge */}
                       <div style={{
-                        position: 'absolute', top: 6, right: 6,
+                        position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)',
                         background: isActive ? gc : 'rgba(255,255,255,0.08)',
                         color: isActive ? '#000' : 'rgba(255,255,255,0.4)',
-                        fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 3,
-                        fontFamily: "'JetBrains Mono', monospace",
-                      }}>{p.maxCameras || p.channels}× CAM</div>
+                        fontSize: 13, fontWeight: 700, padding: '3px 8px', borderRadius: 3,
+                        fontFamily: "'JetBrains Mono', monospace", whiteSpace: 'nowrap',
+                      }}>{p.channels}CH</div>
                       {/* Connection mode badge — on selected processor */}
                       {isActive && selectedFamily && (connType === 'dual' || connType === 'dual2' || connType === 'multi') && (
                         <div style={{
@@ -1139,7 +1139,7 @@ export default function App() {
           )}
         </div>
         {/* CONNECTION STRIP — visible in Master Engine */}
-        <div style={{ ...styles.strip, flex: '0 0 100px', order: 2 }} data-strip="conn">
+        <div style={{ ...styles.strip, flex: '0 0 100px', order: 2, overflow: 'visible' }} data-strip="conn">
           {modeConnections.map(c => {
             const isActive = selectedConn === c.id;
             const isAvail = availableConns.includes(c.id);
@@ -1188,6 +1188,23 @@ export default function App() {
                     padding: '2px 6px', marginTop: 4, whiteSpace: 'nowrap',
                     fontFamily: "'JetBrains Mono', monospace",
                   }}>VIA XSLINK HUB</div>
+                )}
+                {c.id === 'xstream-fiber' && needsXSLinkHub(selectedFamily, selectedProc, hybridModes[selectedFamily]) && (
+                  <div style={{
+                    position: 'absolute', left: '100%', top: 0, bottom: 0,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(232,182,0,0.06)',
+                    borderLeft: '1px solid rgba(232,182,0,0.2)',
+                    borderRight: '1px solid rgba(232,182,0,0.2)',
+                    padding: '6px 10px', zIndex: 5, width: 80,
+                  }}>
+                    <img src="./images/xslink-hub.png" alt="XSLink Hub" style={{ width: 68, height: 46, objectFit: 'contain' }} />
+                    <div style={{
+                      fontSize: 8, fontWeight: 700, letterSpacing: '0.08em',
+                      color: '#E8B600', marginTop: 4, whiteSpace: 'nowrap',
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}>XSLINK HUB</div>
+                  </div>
                 )}
               </div>
             );

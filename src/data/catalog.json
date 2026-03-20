@@ -179,7 +179,8 @@
   ],
   "models": {
     "helios": [
-      { "id": "helios-8k2", "name": "8K²", "fullName": "Helios 8K²", "res": "8192 × 8192", "fps": "90", "conn": "Fiber", "sensor": "20.48 × 20.48", "pixel": "2.5 × 2.5", "depth": "8-10-12 / 24-30-36", "isoMono": "3,000", "isoColor": "1,000", "mount": "Canon C (adaptable)", "weight": "1,321g", "dims": "161.54 × 101.6 × 93.98 mm", "note": "8K×6K @120fps" }
+      { "id": "helios-8k2", "name": "8K²", "fullName": "Helios 8K²", "res": "8192 × 8192", "fps": "90", "conn": "Fiber", "sensor": "20.48 × 20.48", "pixel": "2.5 × 2.5", "depth": "8-10-12 / 24-30-36", "isoMono": "3,000", "isoColor": "1,000", "mount": "Canon C (adaptable)", "weight": "1,321g", "dims": "161.54 × 101.6 × 93.98 mm", "note": "8K×6K @120fps" },
+      { "id": "helios-8kuhd", "name": "8K UHD", "fullName": "Helios 8K UHD", "res": "7680 × 4320", "fps": "180", "conn": "Fiber", "sensor": "20.48 × 20.48", "pixel": "2.5 × 2.5", "depth": "8-10-12 / 24-30-36", "isoMono": "3,000", "isoColor": "1,000", "mount": "Canon C (adaptable)", "weight": "1,321g", "dims": "161.54 × 101.6 × 93.98 mm" }
     ],
     "galileo": [
       { "id": "gal-3k", "name": "3K", "fullName": "Galileo-3K", "res": "3200 × 2560", "fps": "3,675", "conn": "Fiber", "sensor": "23 × 18.4", "pixel": "7.2", "depth": "8-10-12 / 24-30-36", "isoMono": "1,000", "isoColor": "3,000", "mount": "Canon / EMFT", "weight": "1,026g", "dims": "155.9 × 54.5 × 139 mm" },
