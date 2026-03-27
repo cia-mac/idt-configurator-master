@@ -1,7 +1,7 @@
 {
-  "name": "idt-configurator",
-  "version": "1.0.0",
-  "description": "",
+  "name": "idt-configurator-master",
+  "version": "1.3.0",
+  "description": "IDT System Configurator — Master Engine",
   "main": "index.js",
   "scripts": {
     "dev": "vite",
