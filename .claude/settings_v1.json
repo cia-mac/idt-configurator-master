@@ -1,0 +1,70 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev)",
+      "Bash(npm run build)",
+      "Bash(npm test *)",
+      "Bash(npx vitest *)",
+      "Bash(npx vite *)",
+      "Bash(git *)",
+      "Bash(node *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Read(*)",
+      "Write(src/*)",
+      "Write(tests/*)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(npm publish *)",
+      "Write(vite.config.js)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "FileEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -q 'catalog.json'; then echo '{\"decision\": \"block\", \"reason\": \"catalog.json is product data. Do not modify without explicit instruction from Ciamac. Data changes go through Jeremy after Luiz approval.\"}'; fi",
+            "statusMessage": "Checking data file guard..."
+          }
+        ]
+      },
+      {
+        "matcher": "FileEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -q 'vite.config'; then echo '{\"decision\": \"block\", \"reason\": \"vite.config.js is frozen. Do not modify.\"}'; fi",
+            "statusMessage": "Checking frozen file guard..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "FileEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -q 'src/'; then echo '{\"additionalContext\": \"Source file was modified. Run constraint validation suite (npm test) before committing.\"}'; fi",
+            "statusMessage": "Checking constraint validation reminder..."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f SESSION_STATE.md ]; then echo '{\"additionalContext\": \"SESSION_STATE.md exists. Read it for tactical handoff.\"}'; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

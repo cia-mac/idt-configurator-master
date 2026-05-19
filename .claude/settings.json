@@ -1,0 +1,70 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev)",
+      "Bash(npm run build)",
+      "Bash(npm test *)",
+      "Bash(npx vitest *)",
+      "Bash(npx vite *)",
+      "Bash(git *)",
+      "Bash(node *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Read(*)",
+      "Write(src/*)",
+      "Write(tests/*)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(npm publish *)",
+      "Write(vite.config.js)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "FileEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_o=$(if echo \"$CLAUDE_TOOL_INPUT\" | grep -q 'catalog.json'; then echo '{\"decision\": \"block\", \"reason\": \"catalog.json is product data. Do not modify without explicit instruction from Ciamac. Data changes go through Jeremy after Luiz approval.\"}'; fi); _r=$?; _oc=\"allowed\"; echo \"$_o\" | grep -q '\"decision\"' && _oc=\"blocked\"; ~/.claude/scripts/hook-logger.sh \"PreToolUse\" \"FileEdit:catalog\" \"$_oc\" \"${CLAUDE_TOOL_INPUT:-unknown}\" 2>/dev/null; printf '%s' \"$_o\"; exit $_r",
+            "statusMessage": "Checking data file guard..."
+          }
+        ]
+      },
+      {
+        "matcher": "FileEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_o=$(if echo \"$CLAUDE_TOOL_INPUT\" | grep -q 'vite.config'; then echo '{\"decision\": \"block\", \"reason\": \"vite.config.js is frozen. Do not modify.\"}'; fi); _r=$?; _oc=\"allowed\"; echo \"$_o\" | grep -q '\"decision\"' && _oc=\"blocked\"; ~/.claude/scripts/hook-logger.sh \"PreToolUse\" \"FileEdit:viteconfig\" \"$_oc\" \"${CLAUDE_TOOL_INPUT:-unknown}\" 2>/dev/null; printf '%s' \"$_o\"; exit $_r",
+            "statusMessage": "Checking frozen file guard..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "FileEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_o=$(if echo \"$CLAUDE_TOOL_INPUT\" | grep -q 'src/'; then echo '{\"additionalContext\": \"Source file was modified. Run constraint validation suite (npm test) before committing.\"}'; fi); _r=$?; _oc=\"allowed\"; [ -n \"$_o\" ] && _oc=\"warned\"; ~/.claude/scripts/hook-logger.sh \"PostToolUse\" \"FileEdit:src\" \"$_oc\" \"${CLAUDE_TOOL_INPUT:-unknown}\" 2>/dev/null; printf '%s' \"$_o\"; exit $_r",
+            "statusMessage": "Checking constraint validation reminder..."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_o=$(if [ -f SESSION_STATE.md ]; then echo '{\"additionalContext\": \"SESSION_STATE.md exists. Read it for tactical handoff.\"}'; fi); _r=$?; _oc=\"allowed\"; [ -n \"$_o\" ] && _oc=\"warned\"; ~/.claude/scripts/hook-logger.sh \"SessionStart\" \"SessionStart\" \"$_oc\" \"SESSION_STATE.md\" 2>/dev/null; printf '%s' \"$_o\"; exit $_r"
+          }
+        ]
+      }
+    ]
+  }
+}
