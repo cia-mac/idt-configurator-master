@@ -2,33 +2,34 @@ import React, { useState, useMemo, useEffect } from 'react';
 import catalog from './data/catalog.json';
 
 // ─── IMAGE PATHS ───────────────────────────────────────────────
+const BASE = import.meta.env.BASE_URL;
 const PROC_IMAGES = {
-  rt4: './images/processors/rt4-rack.png',
-  rtv: './images/processors/rt4-rack.png',
-  rt3: './images/processors/rt3-compact.png',
-  'tc2-1': './images/processors/tc2.png',
-  'tc2-2': './images/processors/tc2.png',
-  tb3: './images/processors/tb3.png',
-  viper: './images/processors/viper.png',
+  rt4: `${BASE}images/processors/rt4-rack.png`,
+  rtv: `${BASE}images/processors/rt4-rack.png`,
+  rt3: `${BASE}images/processors/rt3-compact.png`,
+  'tc2-1': `${BASE}images/processors/tc2.png`,
+  'tc2-2': `${BASE}images/processors/tc2.png`,
+  tb3: `${BASE}images/processors/tb3.png`,
+  viper: `${BASE}images/processors/viper.png`,
 };
 
 const CAM_IMAGES = {
-  helios: './images/cameras/helios.png',
-  galileo: './images/cameras/galileo-6k.png',
-  'phoenix-gold': './images/cameras/phoenix-gold.png',
-  phoenix: './images/cameras/phoenix-hd-uhd.png',
-  'phoenix-cr': './images/cameras/phoenix-cr.png',
-  xs2: './images/cameras/xs-ii.png',
-  'os2-gold': './images/cameras/os-ii.png',
-  os2: './images/cameras/os-ii.png',
-  xsm: './images/cameras/xsm.png',
-  xstream: './images/cameras/xss.png',
-  sugarcube: './images/cameras/sugarcube.png',
-  ccm: './images/cameras/ccm.png',
-  ccs: './images/cameras/ccs.png',
+  helios: `${BASE}images/cameras/helios.png`,
+  galileo: `${BASE}images/cameras/galileo-6k.png`,
+  'phoenix-gold': `${BASE}images/cameras/phoenix-gold.png`,
+  phoenix: `${BASE}images/cameras/phoenix-hd-uhd.png`,
+  'phoenix-cr': `${BASE}images/cameras/phoenix-cr.png`,
+  xs2: `${BASE}images/cameras/xs-ii.png`,
+  'os2-gold': `${BASE}images/cameras/os-ii.png`,
+  os2: `${BASE}images/cameras/os-ii.png`,
+  xsm: `${BASE}images/cameras/xsm.png`,
+  xstream: `${BASE}images/cameras/xss.png`,
+  sugarcube: `${BASE}images/cameras/sugarcube.png`,
+  ccm: `${BASE}images/cameras/ccm.png`,
+  ccs: `${BASE}images/cameras/ccs.png`,
 };
 
-const A = './images/cameras/angles/';
+const A = `${BASE}images/cameras/angles/`;
 const CAM_ANGLES = {
   helios:         [`${A}helios-3qtr.png`,`${A}helios-front.png`,`${A}helios-back.png`,`${A}helios-left.png`,`${A}helios-side.png`,`${A}helios-top.png`],
   galileo:        [`${A}galileo-3qtr.png`,`${A}galileo-front.png`,`${A}galileo-rear.png`,`${A}galileo-side.png`,`${A}galileo-top.png`],
@@ -153,7 +154,7 @@ export default function App() {
   const [hubImgLoaded, setHubImgLoaded] = useState(false);
   useEffect(() => {
     const img = new Image();
-    img.src = './images/xslink-hub.png';
+    img.src = `${BASE}images/xslink-hub.png`;
     img.onload = () => { hubImgRef.current = img; setHubImgLoaded(true); };
   }, []);
   const procStripRef = React.useRef(null);
@@ -1198,7 +1199,7 @@ export default function App() {
                     borderRight: '1px solid rgba(232,182,0,0.2)',
                     padding: '6px 10px', zIndex: 5, width: 80,
                   }}>
-                    <img src="./images/xslink-hub.png" alt="XSLink Hub" style={{ width: 68, height: 46, objectFit: 'contain' }} />
+                    <img src={`${BASE}images/xslink-hub.png`} alt="XSLink Hub" style={{ width: 68, height: 46, objectFit: 'contain' }} />
                     <div style={{
                       fontSize: 8, fontWeight: 700, letterSpacing: '0.08em',
                       color: '#E8B600', marginTop: 4, whiteSpace: 'nowrap',
@@ -1753,27 +1754,27 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
   return (
     <div style={styles.heroContent}>
       {/* ── 1. NAME — top ── */}
-      <div style={{ width: '100%', textAlign: 'center', marginTop: 24, marginBottom: 0, flexShrink: 0 }}>
+      <div style={{ width: '100%', textAlign: 'center', marginTop: 8, marginBottom: 0, flexShrink: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(232,182,0,0.5)', letterSpacing: '0.14em' }}>
           {getConnectionLabel(family.id, proc?.id, hybridMode) || (family.group === 'fiber' ? 'XSTREAM FIBER' : (family.hybrid && hybridMode === 'ethernet') ? 'ETHERNET' : family.group === 'compact' ? 'XSTREAM USB-C' : 'ETHERNET')}
         </div>
-        <div style={{ fontSize: 47, fontWeight: 300, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.1, marginTop: 4 }}>
+        <div style={{ fontSize: 38, fontWeight: 300, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.1, marginTop: 4 }}>
           {model.fullName}
         </div>
       </div>
 
       {/* ── 2. HERO IMAGE — centered, tight crop ── */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', flexShrink: 0 }}>
-        <div style={{ width: 744, height: 384, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        <div style={{ width: 560, height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
           <img src={angles[activeAngle]} alt={family.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.5))', transform: 'scale(1.1)' }} />
         </div>
       </div>
 
       {/* ── 3. THUMBNAILS — below hero ── */}
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', width: '100%', flexShrink: 0, marginTop: 8, marginBottom: 4 }}>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', width: '100%', flexShrink: 0, marginTop: 4, marginBottom: 0 }}>
         {angles.map((src, i) => (
           <button key={i} onClick={() => setActiveAngle(i)} style={{
-            ...styles.thumbBtn, width: 100, height: 100,
+            ...styles.thumbBtn, width: 64, height: 64,
             ...(activeAngle === i ? styles.thumbBtnActive : {}),
           }}>
             <img src={src} alt={`View ${i + 1}`} style={styles.thumbImg} />
@@ -1783,7 +1784,7 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
 
       {/* ── 4. MODEL PILLS ── */}
       {models.length > 1 && (
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', width: '100%', maxWidth: 640, margin: '12px auto 0', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', width: '100%', maxWidth: 640, margin: '8px auto 0', flexShrink: 0 }}>
           {models.map(m => (
             <button
               key={m.id}
@@ -1803,7 +1804,7 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
       {/* ── 4. CONNECTION MODE STATUS ── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        width: '100%', maxWidth: 640, margin: '12px auto 0', padding: '0', gap: 10, flexShrink: 0,
+        width: '100%', maxWidth: 640, margin: '8px auto 0', padding: '0', gap: 10, flexShrink: 0,
       }}>
         {/* Cable icon */}
         <svg width="32" height="16" viewBox="0 0 32 16">
@@ -1829,11 +1830,11 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
       <div style={{
         width: '100%', maxWidth: 640,
         flexShrink: 0,
-        margin: '12px auto 0',
+        margin: '8px auto 0',
         border: '1px solid rgba(232,182,0,0.25)',
         borderRadius: 10,
         background: 'linear-gradient(180deg, rgba(232,182,0,0.04) 0%, rgba(0,0,0,0.3) 100%)',
-        padding: '24px 36px 20px',
+        padding: '16px 36px 14px',
       }}>
         {allTiers.map((tier, idx) => {
           const isLast = idx === allTiers.length - 1;
@@ -1889,7 +1890,7 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
       </div>
 
       {/* ── 6. Specs — 3×2 grid in boxes, aligned with FPS box ── */}
-      <div style={{ width: '100%', maxWidth: 640, margin: '12px auto 0', flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0, boxSizing: 'border-box' }}>
+      <div style={{ width: '100%', maxWidth: 640, margin: '8px auto 0', flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0, boxSizing: 'border-box' }}>
         {[
           { label: 'SENSOR', value: model.sensor ? `${model.sensor} mm` : '—' },
           { label: 'PIXEL', value: model.pixel ? `${model.pixel} µm` : '—' },
