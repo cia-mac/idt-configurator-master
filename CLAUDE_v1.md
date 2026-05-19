@@ -38,24 +38,6 @@ Three entity types connected by a compatibility matrix:
 ### FPS Display Rule
 FPS numbers shown are best-case (dual-channel for fiber cameras). Other configurations are accessible but not the default display. This is intentional. Luiz wants high numbers prominent.
 
-## Conditional Rules
-
-### Data File Protection
-`src/data/catalog.json` is guarded by a PreToolUse hook. Edits are blocked unless Ciamac explicitly overrides.
-This enforces the ownership boundary: Jeremy handles data entry, Ciamac approves changes.
-
-### Frozen Files
-`vite.config.js` is deny-listed in permissions. `package.json` and `package-lock.json` default to ask (not auto-approved, not blocked).
-Remove the deny rule on vite.config.js only with explicit instruction.
-
-### Constraint Validation
-After any edit to `src/App.jsx`, the PostToolUse hook reminds to run `npm test`.
-The constraint-validator agent can be spawned for a full validation report.
-
-### Deploy Gate
-Never deploy to GitHub Pages without passing all constraint tests.
-The deploy sequence: `npm test` -> `npm run build` -> commit -> push.
-
 ## Key File Map
 - `src/App.jsx` — All constraint logic and UI rendering. This is the core. Do not modify without running tests.
 - `src/data/catalog.json` — Camera specs, processor specs, compatibility matrix. The single source of product data.
