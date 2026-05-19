@@ -1,13 +1,29 @@
 ---
-workflow_step: post_delivery_organization_drive_cleanup_complete
+workflow_step: post_migration_repo_cleaned_4_commits_unpushed
 agent_type: execute
 token_budget: deep
-last_updated: 2026-05-09
+last_updated: 2026-05-19
 ---
 
-# SESSION_STATE.md -- IDT Handover (Delivered) → 2TB Drive Cleanup (Complete)
+# SESSION_STATE.md -- IDT Configurator (Master Engine)
 
 > Tactical handoff between sessions. Update at every session exit.
+
+## 2026-05-19 — Post-migration repo cleanup (new Mac, 4 commits, NOT pushed)
+
+Triaged the "2,357 dirty file" pile that was sitting on `main` since the 7-week-old "pre-reorg save uncommitted work" commit. Real scope was 10 files. node_modules and dist were tracked but absent on the new Mac (never npm-installed), creating phantom-deletion noise. Four clean commits stacked on top of `5cf8654`, working tree now clean. Build verified (vite v7.3.1, 30 modules, 892ms, dist/index-*.js = 79.5 KB gzip).
+
+Commits (oldest first, all unpushed):
+1. `cdfdc7a` chore: gitignore node_modules and dist, untrack build artifacts
+2. `2d66194` chore: add Claude Code project config, drop stale .DS_Store
+3. `0d91a83` docs: refresh CLAUDE.md for ~/Developer layout, add SESSION_STATE
+4. `50c7210` fix: route asset URLs through Vite BASE_URL, tighten CameraHero layout
+
+The code commit (#4) is the only behavioral change. It's two concerns rolled into one (BASE_URL refactor + hero spacing pass) because they were both in the same pre-reorg App.jsx diff and splitting a 7-week-old blob mid-migration wasn't worth the token cost. Body of the commit message documents both.
+
+**Pre-existing gap discovered, NOT fixed this session:** `npm test` is referenced by CLAUDE.md and the constraint-validator agent but the test runner is not installed. tests/constraints.test.js (387 lines) exists, package.json has no `test` script, devDependencies lack vitest/jest. Next code session should either wire up vitest or delete the agent + CLAUDE.md references.
+
+**Not pushed.** User said "commit as you go" but did not authorize push. Next session should verify with Cia, then `git push origin main`.
 > Notion holds strategy. This file holds working state.
 
 ## Last Updated
