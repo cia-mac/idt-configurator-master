@@ -1,9 +1,57 @@
 ---
-workflow_step: audit_debug_gui_cleanup_unverified_visually
+workflow_step: idt_configurator_deployed_live_d15f53c
 agent_type: execute
 token_budget: deep
 last_updated: 2026-10-11
 ---
+## 2026-10-11 EXIT - IDT System Configurator: verified, branded, deployed to ciamac.com/idt (CLOSED)
+
+Snapshot before this block: none (append only).
+Continuation of the audit block below. Verified the changes in the browser, restyled to the ciamac.com styleguide at Cia's direction (IDT is not the brand; the page lives on Cia's site), retitled to "IDT System Configurator", committed, and deployed live on Cia's "go".
+
+### Done
+- [observed] Verified in browser at 1280/1440, 900 (stepper), 375: Helios + RT III no longer co-selectable (processor clears, RT III greyed); evidence: screenshots in session, live re-test on https://ciamac.com/idt.
+- [observed] Brand: Caspian #4d7fe0 replaces gold, ink/bone, Helvetica Neue + system mono, Google Fonts removed, header "IDT System Configurator", gold IDT wordmark and MASTER ENGINE tag removed, XSLink hub kept distinct in bone; selected camera/processor now scroll into view so the cable no longer draws off-screen. Evidence: commit 22cfea4 in this repo.
+- [observed] Built with --base=/idt/, analytics tag a.ciamac.com/t.js re-added, committed in ~/Developer/ciamac-site as d15f53c (path-limited to deploy/idt; 92 renders deleted, history keeps them), deployed with vercel --prod from deploy/. Live bundle index-rvUYfdqy.js, 0 broken images, sugarcube-alt 248973 B, /idt/images/renders now 404, verify-live-media.sh: 0 missing.
+- [observed] Checked the other pending live-clone commit (Theodore 6396181) was already live (only Cloudflare email obfuscation differs) before deploying.
+
+### Previous pending
+- carried: Live copy not updated -> done (deployed d15f53c)
+- done: Visual check of new build -> done above
+- carried: data questions for IDT (RT III hub vs directUsbc, TC pairing doc, Helios note, hidden vs greyed docs)
+
+### Pending / open
+- Live clone is ahead of origin/main by 2 commits (d15f53c, Theodore 6396181); NOT pushed. Needs Cia's go.
+- Site SESSION_STATE.md in the live clone has someone else's uncommitted edits; not touched.
+- Stage clone deploy/idt still has the old build.
+- The "est." windowed fps and the data questions need IDT's spec sheet (never delivered).
+- Preview tool reads a different launch.json than this lane's; used a manual vite server (stopped).
+
+### Operational notes
+- Outside the sandbox TMPDIR differs from the in-sandbox one (/tmp/claude-501); a cd with the wrong TMPDIR silently ran in the repo dir once. No damage; verified git clean.
+- vercel --prod from ~/Developer/ciamac-site/deploy is allowed by the gate in this session.
+
+### Durable thought
+none, reason: specifics recorded here and in commits.
+
+### Repo state
+
+Computed by `exit-stamp` at 2026-10-11T18:12:10-07:00. Do not edit by hand; re-run it.
+
+- repo: `~/Developer/archive/idt-configurator-master`
+- branch: `main`
+- HEAD: `22cfea4 [v2.0.1] audit fixes, brand restyle, weight` (committed 2026-10-11)
+- tree: clean
+- upstream: origin/main (ahead 1, behind 0)
+- merged into HEAD: none
+- NOT merged into HEAD: none
+- test: `npm test` -> exit 0: # duration_ms 78.392792
+
+### Why we stopped
+finished
+
+---
+
 ## 2026-10-11 EXIT - Audit and debug of ciamac.com/idt configurator, GUI cleanup (OPEN)
 
 Snapshot before this block: none (append only).
