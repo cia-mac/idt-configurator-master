@@ -3,6 +3,9 @@ import catalog from './data/catalog.json';
 
 // ─── IMAGE PATHS ───────────────────────────────────────────────
 const BASE = import.meta.env.BASE_URL;
+// Typography follows the ciamac.com styleguide: Helvetica Neue + system mono
+const SANS = "'Helvetica Neue', Helvetica, Arial, sans-serif";
+const MONO = "'SF Mono', ui-monospace, Menlo, Consolas, monospace";
 const PROC_IMAGES = {
   rt4: `${BASE}images/processors/rt4-rack.png`,
   rtv: `${BASE}images/processors/rt4-rack.png`,
@@ -110,7 +113,7 @@ function getConnectionLabel(familyId, procId, hybridMode) {
 }
 
 function HubIcon({ active }) {
-  const c = active ? '#E8B600' : '#666';
+  const c = active ? '#4d7fe0' : '#666';
   return (
     <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
       <rect x="2" y="1" width="16" height="12" rx="2" stroke={c} strokeWidth="1.2" />
@@ -131,6 +134,7 @@ const GROUP_COLORS = {
 
 // ─── MAIN APP ──────────────────────────────────────────────────
 const isEmbed = new URLSearchParams(window.location.search).get('embed') === '1';
+const DESKTOP_MIN_WIDTH = 1180;
 
 export default function App() {
   const [selectedProc, setSelectedProc] = useState(null);
@@ -161,10 +165,11 @@ export default function App() {
   // Master Engine: unified configurator — all cameras, all processors, all connections
 
   // ─── MOBILE DETECTION ──────────────────────────────────────
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  // The three-strip desktop layout needs ~1180px; narrower screens (phones, tablets) get the stepper.
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < DESKTOP_MIN_WIDTH);
   const [mobileStep, setMobileStep] = useState(0); // 0=proc, 1=conn, 2=cam, 3=detail
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
+    const onResize = () => setIsMobile(window.innerWidth < DESKTOP_MIN_WIDTH);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
@@ -273,7 +278,7 @@ export default function App() {
     }
 
     return modes;
-  }, [selectedFamily, selectedProc]);
+  }, [selectedFamily, selectedProc, hybridModes]);
 
   // Auto-select best connection mode: prefer dual (full FPS) when available
   useEffect(() => {
@@ -375,7 +380,7 @@ export default function App() {
     };
 
     const drawLabel = (x, y, text, clr, size = 10) => {
-      ctx.font = `bold ${size}px "JetBrains Mono", monospace`;
+      ctx.font = `bold ${size}px ${MONO}`;
       ctx.fillStyle = clr;
       ctx.textAlign = 'center';
       ctx.fillText(text, x, y);
@@ -522,20 +527,20 @@ export default function App() {
         // Draw hub image (or fallback box)
         if (hubImg) {
           ctx.save();
-          ctx.shadowColor = 'rgba(232,182,0,0.25)';
+          ctx.shadowColor = 'rgba(236,232,223,0.25)';
           ctx.shadowBlur = 10;
           ctx.drawImage(hubImg, hubLeft, hubTop, hubW, hubH);
           ctx.restore();
         } else {
-          ctx.fillStyle = 'rgba(232,182,0,0.12)';
-          ctx.strokeStyle = '#E8B600';
+          ctx.fillStyle = 'rgba(236,232,223,0.12)';
+          ctx.strokeStyle = '#ece8df';
           ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.roundRect(hubLeft, hubTop, hubW, hubH, 6);
           ctx.fill();
           ctx.stroke();
-          ctx.font = 'bold 8px "JetBrains Mono", monospace';
-          ctx.fillStyle = '#E8B600';
+          ctx.font = `bold 8px ${MONO}`;
+          ctx.fillStyle = '#ece8df';
           ctx.textAlign = 'center';
           ctx.fillText('HUB', hubX, hubCenterY + 3);
         }
@@ -550,6 +555,13 @@ export default function App() {
       drawPlug(x2, y2, color);
     }
   }, [selectedFamily, selectedProc, connType, hybridModes, hubImgLoaded]);
+
+  // Keep both ends of the cable on screen: bring the selected camera / processor into view
+  useEffect(() => {
+    if (isMobile) return;
+    camRefs.current[selectedFamily]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    procRefs.current[selectedProc]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [selectedFamily, selectedProc, isMobile]);
 
   // Redraw on scroll events from either strip
   useEffect(() => {
@@ -581,6 +593,7 @@ export default function App() {
 
   const availableProcs = useMemo(() => {
     let procs = catalog.processors.map(p => p.id);
+    if (selectedFamily) procs = procs.filter(pid => !isProcessorBlocked(pid, selectedFamily));
     if (selectedConn) procs = procs.filter(pid => procsForConn(selectedConn).includes(pid));
     if (selectedFamily) {
       const famConns = connsForFamily(selectedFamily);
@@ -600,6 +613,7 @@ export default function App() {
       });
     }
     if (selectedProc) {
+      fams = fams.filter(f => !isProcessorBlocked(selectedProc, f.id));
       const procConns = connsForProc(selectedProc);
       const procGroups = new Set(procConns.map(cid => catalog.connections.find(c => c.id === cid)?.group).filter(Boolean));
       fams = fams.filter(f => {
@@ -634,6 +648,8 @@ export default function App() {
 
   // ─── HANDLERS (bidirectional) ──────────────────────────────
   function selectProcessor(id) {
+    // A restricted pairing (e.g. Helios on RT III) can never be selected, from either side
+    if (isProcessorBlocked(id, selectedFamily)) return;
     setSelectedProc(id);
     // Default to single connection when selecting processor
     setConnType('single');
@@ -670,18 +686,17 @@ export default function App() {
       // Proc already picked — try to bridge
       const procConns = connsForProc(selectedProc);
       const bridge = procConns.filter(cid => famConns.includes(cid));
-      if (bridge.length === 1) {
-        setSelectedConn(bridge[0]); // auto-bridge
-      } else if (bridge.length === 0) {
-        // Incompatible — clear proc, start reverse
+      if (bridge.length > 0 && !isProcessorBlocked(selectedProc, id)) {
+        if (bridge.length === 1) setSelectedConn(bridge[0]); // auto-bridge
+        else setSelectedConn(null); // multiple bridges, user picks
+      } else {
+        // Incompatible (no shared connection, or restricted pairing) — clear proc, start reverse
         setSelectedProc(null); setSelectedConn(null);
         if (famConns.length === 1) {
           setSelectedConn(famConns[0]);
-          const compatProcs = procsForConn(famConns[0]);
+          const compatProcs = procsForConn(famConns[0]).filter(p => !isProcessorBlocked(p, id));
           if (compatProcs.length === 1) setSelectedProc(compatProcs[0]);
         }
-      } else {
-        setSelectedConn(null); // multiple bridges, user picks
       }
     } else {
       // Reverse flow — camera first
@@ -689,7 +704,7 @@ export default function App() {
       if (famConns.length === 1) {
         setSelectedConn(famConns[0]);
         // Auto-select processor if only one compatible (e.g. ethernet → Viper)
-        const compatProcs = procsForConn(famConns[0]);
+        const compatProcs = procsForConn(famConns[0]).filter(p => !isProcessorBlocked(p, id));
         if (compatProcs.length === 1) setSelectedProc(compatProcs[0]);
       }
     }
@@ -764,13 +779,10 @@ export default function App() {
     ];
 
     return (
-      <div style={{ position: 'fixed', inset: 0, background: '#0A0A0A', color: '#fff', fontFamily: "'Inter', 'Helvetica Neue', sans-serif", display: 'flex', flexDirection: 'column', overflow: 'hidden', WebkitFontSmoothing: 'antialiased' }}>
+      <div style={{ position: 'fixed', inset: 0, background: '#0A0A0A', color: '#fff', fontFamily: SANS, display: 'flex', flexDirection: 'column', overflow: 'hidden', WebkitFontSmoothing: 'antialiased' }}>
         {/* Mobile Header */}
         <header style={{ height: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(10,10,10,0.85)', flexShrink: 0, zIndex: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 16, fontWeight: 700, color: '#E8B600', letterSpacing: '0.08em' }}>IDT</span>
-            <span style={{ fontSize: 9, fontWeight: 500, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em' }}>CONFIGURATOR</span>
-          </div>
+          <span style={{ fontSize: 14, fontWeight: 500, color: '#ece8df', letterSpacing: '0.02em' }}>IDT System Configurator</span>
           <button style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit' }} onClick={handleReset}>RESET</button>
         </header>
 
@@ -782,10 +794,10 @@ export default function App() {
             { label: 'CAM', value: activeModel?.fullName || activeFamily?.name },
           ].map((seg, i) => (
             <React.Fragment key={seg.label}>
-              {i > 0 && <span style={{ color: '#E8B600', fontSize: 12, opacity: 0.4 }}>→</span>}
+              {i > 0 && <span style={{ color: '#4d7fe0', fontSize: 12, opacity: 0.4 }}>→</span>}
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 8, fontWeight: 600, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)' }}>{seg.label}</div>
-                <div style={{ fontSize: 11, fontWeight: 500, color: seg.value ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.2)', fontFamily: "'JetBrains Mono', monospace", whiteSpace: 'nowrap', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis' }}>{seg.value || '—'}</div>
+                <div style={{ fontSize: 11, fontWeight: 500, color: seg.value ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.2)', fontFamily: MONO, whiteSpace: 'nowrap', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis' }}>{seg.value || '—'}</div>
               </div>
             </React.Fragment>
           ))}
@@ -798,11 +810,11 @@ export default function App() {
             const hasSel = i === 0 ? !!selectedProc : i === 1 ? !!selectedConn : i === 2 ? !!selectedFamily : !!activeModel;
             return (
               <button key={i} onClick={() => setMobileStep(i)} style={{
-                flex: 1, padding: '10px 4px', background: isAct ? 'rgba(232,182,0,0.06)' : 'transparent',
-                border: 'none', borderBottom: isAct ? '2px solid #E8B600' : '2px solid transparent',
-                cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace",
+                flex: 1, padding: '10px 4px', background: isAct ? 'rgba(77,127,224,0.06)' : 'transparent',
+                border: 'none', borderBottom: isAct ? '2px solid #4d7fe0' : '2px solid transparent',
+                cursor: 'pointer', fontFamily: MONO,
               }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: isAct ? '#E8B600' : hasSel ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)' }}>{step.short}</div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: isAct ? '#4d7fe0' : hasSel ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)' }}>{step.short}</div>
               </button>
             );
           })}
@@ -810,6 +822,7 @@ export default function App() {
 
         {/* Step Content */}
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+         <div style={{ maxWidth: 720, margin: '0 auto', width: '100%' }}>
 
           {/* STEP 0: Processors */}
           {mobileStep === 0 && (
@@ -819,7 +832,7 @@ export default function App() {
                 return (
                   <div key={gi} style={{ marginBottom: 12, border: `1px solid ${gc}33`, borderRadius: 8, overflow: 'hidden' }}>
                     {group.label && (
-                      <div style={{ padding: '10px 0', textAlign: 'center', fontSize: 14, fontWeight: 900, letterSpacing: '0.18em', color: gc, fontFamily: "'JetBrains Mono', monospace", borderBottom: `1px solid ${gc}30`, background: `linear-gradient(180deg, ${gc}0A 0%, transparent 100%)` }}>{group.label}</div>
+                      <div style={{ padding: '10px 0', textAlign: 'center', fontSize: 14, fontWeight: 900, letterSpacing: '0.18em', color: gc, fontFamily: MONO, borderBottom: `1px solid ${gc}30`, background: `linear-gradient(180deg, ${gc}0A 0%, transparent 100%)` }}>{group.label}</div>
                     )}
                     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${group.ids.length > 2 ? 3 : group.ids.length}, 1fr)`, gap: 0 }}>
                       {group.ids.map(pid => {
@@ -830,7 +843,7 @@ export default function App() {
                         const hasNarrow = selectedFamily || selectedConn;
                         const isIncompat = hasNarrow && !isProcAvail;
                         return (
-                          <button key={p.id} onClick={() => { selectProcessor(p.id); const pConns = connsForProc(p.id); setMobileStep(pConns.length === 1 ? 2 : 1); }} style={{
+                          <button key={p.id} onClick={() => { if (isProcessorBlocked(p.id, selectedFamily)) return; selectProcessor(p.id); const pConns = connsForProc(p.id); setMobileStep(pConns.length === 1 ? 2 : 1); }} style={{
                             background: isActive ? `${gc}10` : 'transparent',
                             border: 'none', borderRight: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)',
                             padding: '16px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
@@ -838,7 +851,7 @@ export default function App() {
                           }}>
                             <img src={PROC_IMAGES[p.id]} alt={p.name} style={{ width: '100%', height: 56, objectFit: 'contain', opacity: isActive ? 1 : 0.6 }} />
                             <div style={{ fontSize: 11, fontWeight: 600, color: isActive ? gc : 'rgba(255,255,255,0.65)', textAlign: 'center', lineHeight: 1.2 }}>{p.name}</div>
-                            <div style={{ fontSize: 9, color: isActive ? `${gc}90` : 'rgba(255,255,255,0.35)', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace" }}>{p.channels}CH</div>
+                            <div style={{ fontSize: 9, color: isActive ? `${gc}90` : 'rgba(255,255,255,0.35)', textAlign: 'center', fontFamily: MONO }}>{p.channels}CH</div>
                           </button>
                         );
                       })}
@@ -857,7 +870,7 @@ export default function App() {
                 const isAvail = availableConns.includes(c.id);
                 const hasSelection = selectedProc || selectedFamily;
                 const isDisabled = hasSelection && !isAvail;
-                const connColor = GROUP_COLORS[c.group] || '#E8B600';
+                const connColor = GROUP_COLORS[c.group] || '#4d7fe0';
                 const IconComp = CONN_ICONS[c.id];
                 return (
                   <button key={c.id} onClick={() => { if (!isDisabled) { selectConnection(c.id); const cn = catalog.connections.find(x => x.id === c.id); const fams = cn ? catalog.camera_families.filter(f => f.group === cn.group) : []; setMobileStep(fams.length === 1 ? 3 : 2); } }} style={{
@@ -887,7 +900,7 @@ export default function App() {
                 const gc = GROUP_COLORS[group.groupId];
                 return (
                   <div key={gi} style={{ marginBottom: 12, border: `1px solid ${gc}33`, borderRadius: 8, overflow: 'hidden' }}>
-                    <div style={{ padding: '10px 0', textAlign: 'center', fontSize: 14, fontWeight: 900, letterSpacing: '0.18em', color: gc, fontFamily: "'JetBrains Mono', monospace", borderBottom: `1px solid ${gc}30`, background: `linear-gradient(180deg, ${gc}0A 0%, transparent 100%)` }}>{group.label}</div>
+                    <div style={{ padding: '10px 0', textAlign: 'center', fontSize: 14, fontWeight: 900, letterSpacing: '0.18em', color: gc, fontFamily: MONO, borderBottom: `1px solid ${gc}30`, background: `linear-gradient(180deg, ${gc}0A 0%, transparent 100%)` }}>{group.label}</div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 0 }}>
                       {group.ids.map(fid => {
                         const f = catalog.camera_families.find(fam => fam.id === fid);
@@ -919,6 +932,7 @@ export default function App() {
           {/* STEP 3: Detail */}
           {mobileStep === 3 && activeModel && activeFamily && (
             <MobileCameraDetail
+              key={activeFamily.id}
               family={activeFamily}
               model={activeModel}
               models={models}
@@ -938,6 +952,7 @@ export default function App() {
               </div>
             </div>
           )}
+         </div>
         </div>
       </div>
     );
@@ -974,12 +989,9 @@ export default function App() {
       {/* HEADER */}
       <header style={styles.header}>
         <div style={styles.headerLeft}>
-          <span style={styles.logo}>IDT</span>
-          <span style={styles.logoSub}>CONFIGURATOR</span>
+          <span style={styles.logo}>IDT System Configurator</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: '#E8B600', fontFamily: "'JetBrains Mono', monospace", padding: '5px 12px', border: '1px solid rgba(232,182,0,0.3)', borderRadius: 4, background: 'rgba(232,182,0,0.06)' }}>MASTER ENGINE</span>
-        </div>
+        <div />
         <button style={styles.resetBtn} onClick={handleReset}>RESET</button>
       </header>
 
@@ -1008,9 +1020,9 @@ export default function App() {
               }}>
                 {group.label && (
                   <div style={{
-                    width: '100%', padding: '16px 0 14px', textAlign: 'center',
-                    fontSize: 28, fontWeight: 900, letterSpacing: '0.2em',
-                    color: gc, fontFamily: "'JetBrains Mono', monospace",
+                    width: '100%', padding: '12px 0 10px', textAlign: 'center',
+                    fontSize: 18, fontWeight: 800, letterSpacing: '0.16em',
+                    color: gc, fontFamily: MONO,
                     borderBottom: `2px solid ${gc}30`,
                     background: `linear-gradient(180deg, ${gc}0A 0%, transparent 100%)`,
                   }}>{group.label}</div>
@@ -1048,7 +1060,7 @@ export default function App() {
                         background: isActive ? gc : 'rgba(255,255,255,0.08)',
                         color: isActive ? '#000' : 'rgba(255,255,255,0.4)',
                         fontSize: 13, fontWeight: 700, padding: '3px 8px', borderRadius: 3,
-                        fontFamily: "'JetBrains Mono', monospace", whiteSpace: 'nowrap',
+                        fontFamily: MONO, whiteSpace: 'nowrap',
                       }}>{p.channels}CH</div>
                       {/* Connection mode badge — on selected processor */}
                       {isActive && selectedFamily && (connType === 'dual' || connType === 'dual2' || connType === 'multi') && (
@@ -1056,7 +1068,7 @@ export default function App() {
                           position: 'absolute', bottom: 6, right: 6,
                           background: '#4080D020', border: '1px solid #4080D050',
                           color: '#4080D0', fontSize: 9, fontWeight: 700, padding: '2px 6px',
-                          borderRadius: 3, fontFamily: "'JetBrains Mono', monospace",
+                          borderRadius: 3, fontFamily: MONO,
                         }}>{connType === 'dual' ? 'DUAL · P1 P2' : connType === 'dual2' ? 'DUAL ×2 · P1-P4' : `${p.channels}× SINGLE`}</div>
                       )}
                       {isBlocked && (
@@ -1064,7 +1076,7 @@ export default function App() {
                           position: 'absolute', top: 6, left: 6,
                           background: 'rgba(220,50,50,0.15)', border: '1px solid rgba(220,50,50,0.3)',
                           color: '#D94040', fontSize: 8, fontWeight: 700, padding: '2px 5px',
-                          borderRadius: 3, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.05em',
+                          borderRadius: 3, fontFamily: MONO, letterSpacing: '0.05em',
                         }}>NOT ALLOWED</div>
                       )}
                       <img
@@ -1078,7 +1090,7 @@ export default function App() {
                         }}
                       />
                       <div style={{
-                        fontFamily: "'Inter', sans-serif", fontSize: 15, fontWeight: 500,
+                        fontFamily: SANS, fontSize: 15, fontWeight: 500,
                         color: isActive ? gc : isProcAvail ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.5)',
                         letterSpacing: '0.02em', textAlign: 'center', lineHeight: 1.3,
                       }}>
@@ -1094,7 +1106,7 @@ export default function App() {
                       <div style={{
                         fontSize: 11, letterSpacing: '0.06em', marginTop: 2,
                         color: isActive ? `${gc}70` : 'rgba(255,255,255,0.3)',
-                        textAlign: 'center', fontFamily: "'JetBrains Mono', monospace",
+                        textAlign: 'center', fontFamily: MONO,
                       }}>
                         {p.channels}CH · {p.interface ? (p.interface.includes('Ethernet') ? 'Ethernet' : p.interface.includes('Fiber') && p.interface.includes('USB-C') ? 'Fiber + USB-C' : p.interface.includes('USB-C') ? 'USB-C' : 'Fiber') : ''}
                       </div>
@@ -1108,7 +1120,7 @@ export default function App() {
         </div>
 
         {/* CABLE GAP — canvas draws over this, small label only */}
-        <div style={{ flex: '0 0 120px', background: 'transparent', order: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: selectedFamily && selectedProc ? 'pointer' : 'default', zIndex: 6 }} data-strip="cable-zone"
+        <div style={{ flex: '0 0 clamp(90px, 7vw, 120px)', background: 'transparent', order: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: selectedFamily && selectedProc ? 'pointer' : 'default', zIndex: 6 }} data-strip="cable-zone"
           onClick={() => {
             if (!selectedFamily || !selectedProc) return;
             const modes = connectionModes.map(m => m.id);
@@ -1117,7 +1129,7 @@ export default function App() {
             setConnType(modes[(idx + 1) % modes.length]);
           }}>
           {selectedFamily && selectedProc && (
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#4080D0', letterSpacing: '0.08em', fontFamily: "'JetBrains Mono', monospace", textAlign: 'center', opacity: 0.7 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#4080D0', letterSpacing: '0.08em', fontFamily: MONO, textAlign: 'center', opacity: 0.7 }}>
               {needsXSLinkHub(selectedFamily, selectedProc, hybridModes[selectedFamily]) ? null : (() => {
                 const effGrp = effectiveGroup(selectedFamily);
                 const isEth = effGrp === 'ccm';
@@ -1147,7 +1159,7 @@ export default function App() {
             const hasSelection = selectedProc || selectedFamily;
             const isDisabled = hasSelection && !isAvail;
             const IconComp = CONN_ICONS[c.id];
-            const connColor = GROUP_COLORS[c.group] || '#E8B600';
+            const connColor = GROUP_COLORS[c.group] || '#4d7fe0';
             return (
               <div
                 key={c.id}
@@ -1184,26 +1196,26 @@ export default function App() {
                 {isActive && c.id === 'xstream-usbc' && needsXSLinkHub(selectedFamily, selectedProc, hybridModes[selectedFamily]) && (
                   <div style={{
                     fontSize: 8, fontWeight: 700, letterSpacing: '0.08em',
-                    color: '#E8B600', background: 'rgba(232,182,0,0.1)',
-                    border: '1px solid rgba(232,182,0,0.25)', borderRadius: 3,
+                    color: '#ece8df', background: 'rgba(236,232,223,0.08)',
+                    border: '1px solid rgba(236,232,223,0.25)', borderRadius: 3,
                     padding: '2px 6px', marginTop: 4, whiteSpace: 'nowrap',
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontFamily: MONO,
                   }}>VIA XSLINK HUB</div>
                 )}
                 {c.id === 'xstream-fiber' && needsXSLinkHub(selectedFamily, selectedProc, hybridModes[selectedFamily]) && (
                   <div style={{
                     position: 'absolute', left: '100%', top: 0, bottom: 0,
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    background: 'rgba(232,182,0,0.06)',
-                    borderLeft: '1px solid rgba(232,182,0,0.2)',
-                    borderRight: '1px solid rgba(232,182,0,0.2)',
+                    background: 'rgba(236,232,223,0.05)',
+                    borderLeft: '1px solid rgba(236,232,223,0.2)',
+                    borderRight: '1px solid rgba(236,232,223,0.2)',
                     padding: '6px 10px', zIndex: 5, width: 80,
                   }}>
                     <img src={`${BASE}images/xslink-hub.png`} alt="XSLink Hub" style={{ width: 68, height: 46, objectFit: 'contain' }} />
                     <div style={{
                       fontSize: 8, fontWeight: 700, letterSpacing: '0.08em',
-                      color: '#E8B600', marginTop: 4, whiteSpace: 'nowrap',
-                      fontFamily: "'JetBrains Mono', monospace",
+                      color: '#ece8df', marginTop: 4, whiteSpace: 'nowrap',
+                      fontFamily: MONO,
                     }}>XSLINK HUB</div>
                   </div>
                 )}
@@ -1232,9 +1244,9 @@ export default function App() {
                 overflow: 'hidden',
               }}>
                 <div style={{
-                  width: '100%', padding: '16px 0 14px', textAlign: 'center',
-                  fontSize: 28, fontWeight: 900, letterSpacing: '0.2em',
-                  color: gc, fontFamily: "'JetBrains Mono', monospace",
+                  width: '100%', padding: '12px 0 10px', textAlign: 'center',
+                  fontSize: 18, fontWeight: 800, letterSpacing: '0.16em',
+                  color: gc, fontFamily: MONO,
                   borderBottom: `2px solid ${gc}30`,
                   background: `linear-gradient(180deg, ${gc}0A 0%, transparent 100%)`,
                 }}>{group.label}</div>
@@ -1273,7 +1285,7 @@ export default function App() {
                         }}
                       />
                       <div style={{
-                        fontFamily: "'Inter', sans-serif", fontSize: 15, fontWeight: 500,
+                        fontFamily: SANS, fontSize: 15, fontWeight: 500,
                         color: isActive ? gc : isAvail ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.55)',
                         letterSpacing: '0.02em', textAlign: 'center', lineHeight: 1.3,
                       }}>
@@ -1302,7 +1314,7 @@ export default function App() {
                                 }
                               }} style={{
                                 padding: '3px 8px', fontSize: 8, fontWeight: 700, letterSpacing: '0.08em',
-                                fontFamily: "'JetBrains Mono', monospace", cursor: 'pointer',
+                                fontFamily: MONO, cursor: 'pointer',
                                 background: isModeActive ? `${mode.color}20` : 'transparent',
                                 color: isModeActive ? mode.color : 'rgba(255,255,255,0.3)',
                               }}>{mode.label}</div>
@@ -1314,7 +1326,7 @@ export default function App() {
                       {isActive && selectedProc && (connType === 'dual' || connType === 'dual2') && f.dualConnection && (
                         <div style={{
                           fontSize: 9, fontWeight: 700, color: '#4080D0', letterSpacing: '0.06em',
-                          fontFamily: "'JetBrains Mono', monospace", marginTop: 4,
+                          fontFamily: MONO, marginTop: 4,
                           padding: '2px 8px', borderRadius: 3,
                           background: '#4080D020', border: '1px solid #4080D050',
                         }}>{connType === 'dual2' ? 'CAM 1 · FULL FPS' : 'DUAL · FULL FPS'}</div>
@@ -1322,7 +1334,7 @@ export default function App() {
                       {isActive && selectedProc && connType === 'multi' && (
                         <div style={{
                           fontSize: 9, fontWeight: 700, color: '#4080D0', letterSpacing: '0.06em',
-                          fontFamily: "'JetBrains Mono', monospace", marginTop: 4,
+                          fontFamily: MONO, marginTop: 4,
                           padding: '2px 8px', borderRadius: 3,
                           background: '#4080D020', border: '1px solid #4080D050',
                         }}>CAM 1 of {catalog.processors.find(p => p.id === selectedProc)?.channels || 2}</div>
@@ -1336,7 +1348,7 @@ export default function App() {
                               <span key={m.id} style={{
                                 fontSize: 9, fontWeight: 500, letterSpacing: '0.02em',
                                 color: isActive ? `${gc}` : 'rgba(255,255,255,0.45)',
-                                fontFamily: "'JetBrains Mono', monospace",
+                                fontFamily: MONO,
                                 border: `1px solid ${isActive ? `${gc}66` : 'rgba(255,255,255,0.12)'}`,
                                 borderRadius: 16,
                                 padding: '2px 8px',
@@ -1365,10 +1377,10 @@ export default function App() {
             <div style={{ display: 'flex', gap: 0 }}>
               {['detail', 'compare'].map(v => (
                 <button key={v} onClick={() => setHeroView(v)} style={{
-                  padding: '8px 18px', border: `1px solid ${heroView === v ? 'rgba(232,182,0,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                  borderRadius: 4, cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace",
-                  background: heroView === v ? 'rgba(232,182,0,0.08)' : 'transparent',
-                  color: heroView === v ? '#E8B600' : 'rgba(255,255,255,0.4)',
+                  padding: '8px 18px', border: `1px solid ${heroView === v ? 'rgba(77,127,224,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                  borderRadius: 4, cursor: 'pointer', fontFamily: MONO,
+                  background: heroView === v ? 'rgba(77,127,224,0.08)' : 'transparent',
+                  color: heroView === v ? '#4d7fe0' : 'rgba(255,255,255,0.4)',
                   fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', marginLeft: -1,
                   textTransform: 'uppercase',
                 }}>
@@ -1400,7 +1412,7 @@ export default function App() {
                       {m.cables >= 2 && <line x1="2" y1="10" x2="22" y2="10" stroke={isActive ? m.color : '#666'} strokeWidth="3" strokeLinecap="round" />}
                     </svg>
                     <div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: isActive ? m.color : 'rgba(255,255,255,0.5)', letterSpacing: '0.06em', fontFamily: "'JetBrains Mono', monospace" }}>{m.label}</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: isActive ? m.color : 'rgba(255,255,255,0.5)', letterSpacing: '0.06em', fontFamily: MONO }}>{m.label}</div>
                       <div style={{ fontSize: 9, color: isActive ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)' }}>{m.desc}</div>
                     </div>
                   </button>
@@ -1416,7 +1428,7 @@ export default function App() {
               background: 'rgba(220,160,0,0.08)', borderBottom: '1px solid rgba(220,160,0,0.2)',
             }}>
               <span style={{ fontSize: 16 }}>⚠️</span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#E8B600', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#4d7fe0', fontFamily: MONO, letterSpacing: '0.04em' }}>
                 {fpsDropWarning}
               </span>
             </div>
@@ -1454,7 +1466,7 @@ export default function App() {
                     zIndex: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 8,
                   }}>
                     <svg width="32" height="64" viewBox="0 0 32 64" fill="none">
-                      <path d="M24 8 L8 32 L24 56" stroke="#E8B600" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.6" />
+                      <path d="M24 8 L8 32 L24 56" stroke="#4d7fe0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.6" />
                     </svg>
                   </button>
                   <button onClick={() => setDetailStage(detailStage === 'camera' ? 'processor' : 'camera')} style={{
@@ -1462,7 +1474,7 @@ export default function App() {
                     zIndex: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 8,
                   }}>
                     <svg width="32" height="64" viewBox="0 0 32 64" fill="none">
-                      <path d="M8 8 L24 32 L8 56" stroke="#E8B600" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.6" />
+                      <path d="M8 8 L24 32 L8 56" stroke="#4d7fe0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.6" />
                     </svg>
                   </button>
                   {/* Stage indicator dots */}
@@ -1470,7 +1482,7 @@ export default function App() {
                     {['camera', 'processor'].map(s => (
                       <button key={s} onClick={() => setDetailStage(s)} style={{
                         width: detailStage === s ? 24 : 8, height: 8, borderRadius: 4,
-                        background: detailStage === s ? '#E8B600' : 'rgba(255,255,255,0.2)',
+                        background: detailStage === s ? '#4d7fe0' : 'rgba(255,255,255,0.2)',
                         border: 'none', cursor: 'pointer', transition: 'all 0.3s ease',
                       }} />
                     ))}
@@ -1525,9 +1537,9 @@ function SignalChainBar({ proc, conn, family, model, hybridMode }) {
             <span style={styles.chainValue}>XSTREAM</span>
           </div>
           <span style={styles.chainArrow}>→</span>
-          <div style={{ ...styles.chainSegment, background: 'rgba(232,182,0,0.08)', borderRadius: 4, padding: '4px 10px', border: '1px solid rgba(232,182,0,0.2)' }}>
-            <span style={{ ...styles.chainLabel, color: '#E8B600' }}>HUB</span>
-            <span style={{ ...styles.chainValue, color: '#E8B600' }}>XSLink</span>
+          <div style={{ ...styles.chainSegment, background: 'rgba(77,127,224,0.08)', borderRadius: 4, padding: '4px 10px', border: '1px solid rgba(77,127,224,0.2)' }}>
+            <span style={{ ...styles.chainLabel, color: '#ece8df' }}>HUB</span>
+            <span style={{ ...styles.chainValue, color: '#ece8df' }}>XSLink</span>
           </div>
           <span style={styles.chainArrow}>→</span>
           <div style={styles.chainSegment}>
@@ -1585,7 +1597,7 @@ function ProcessorConfigPanel({ proc, procConfig, setProcConfig }) {
     <div style={{ marginBottom: 14 }}>
       <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', marginBottom: 6 }}>{label}</div>
       {fixed ? (
-        <div style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', fontFamily: "'JetBrains Mono', monospace" }}>
+        <div style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', fontFamily: MONO }}>
           {fixedValue} {unit} <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>FIXED</span>
         </div>
       ) : (
@@ -1594,11 +1606,11 @@ function ProcessorConfigPanel({ proc, procConfig, setProcConfig }) {
             const isActive = (cfg[field] || options[0]) === v;
             return (
               <button key={v} onClick={() => setProcConfig({ ...cfg, [field]: v })} style={{
-                background: isActive ? 'rgba(232,182,0,0.12)' : 'rgba(255,255,255,0.04)',
-                border: isActive ? '1px solid rgba(232,182,0,0.4)' : '1px solid rgba(255,255,255,0.1)',
-                color: isActive ? '#E8B600' : 'rgba(255,255,255,0.5)',
+                background: isActive ? 'rgba(77,127,224,0.12)' : 'rgba(255,255,255,0.04)',
+                border: isActive ? '1px solid rgba(77,127,224,0.4)' : '1px solid rgba(255,255,255,0.1)',
+                color: isActive ? '#4d7fe0' : 'rgba(255,255,255,0.5)',
                 fontSize: 14, fontWeight: 600, padding: '6px 14px', borderRadius: 4,
-                cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace",
+                cursor: 'pointer', fontFamily: MONO,
               }}>{v} {unit}</button>
             );
           })}
@@ -1608,8 +1620,8 @@ function ProcessorConfigPanel({ proc, procConfig, setProcConfig }) {
   );
 
   return (
-    <div style={{ margin: '16px 32px', padding: '20px 24px', background: 'rgba(232,182,0,0.03)', border: '1px solid rgba(232,182,0,0.12)', borderRadius: 8 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#E8B600', letterSpacing: '0.12em', marginBottom: 16 }}>CONFIGURE PROCESSOR</div>
+    <div style={{ margin: '16px 32px', padding: '20px 24px', background: 'rgba(77,127,224,0.03)', border: '1px solid rgba(77,127,224,0.12)', borderRadius: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#4d7fe0', letterSpacing: '0.12em', marginBottom: 16 }}>CONFIGURE PROCESSOR</div>
       {opts.ramFixed && <SelectRow label="DDR / RAM" fixed fixedValue={opts.ram} unit={opts.ramUnit} />}
       {opts.ddr && <SelectRow label="DDR / RAM" options={opts.ddr} unit={opts.ddrUnit} field="ddr" />}
       {opts.osDisk && <SelectRow label="OS DISK" fixed fixedValue="Included" unit="" />}
@@ -1641,9 +1653,9 @@ function ProcessorHero({ proc, conns, allConns, selectedConn, procConfig, setPro
             return (
               <span key={cId} style={{
                 ...styles.heroBadge,
-                borderColor: isActive ? '#E8B600' : '#333',
-                color: isActive ? '#E8B600' : '#888',
-                background: isActive ? 'rgba(232,182,0,0.06)' : 'transparent',
+                borderColor: isActive ? '#4d7fe0' : '#333',
+                color: isActive ? '#4d7fe0' : '#888',
+                background: isActive ? 'rgba(77,127,224,0.06)' : 'transparent',
               }}>
                 {c.label} {c.sublabel}
                 {c.mult !== 1 && <span style={{ opacity: 0.5, marginLeft: 4 }}>({c.mult}×)</span>}
@@ -1658,18 +1670,18 @@ function ProcessorHero({ proc, conns, allConns, selectedConn, procConfig, setPro
       {/* Processor specs */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 40, marginTop: 24, padding: '24px 32px' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 56, fontWeight: 200, color: 'rgba(255,255,255,0.9)', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1, letterSpacing: '-0.04em' }}>{proc.channels || '—'}</div>
+          <div style={{ fontSize: 56, fontWeight: 200, color: 'rgba(255,255,255,0.9)', fontFamily: MONO, lineHeight: 1, letterSpacing: '-0.04em' }}>{proc.channels || '—'}</div>
           <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.14em', textTransform: 'uppercase', marginTop: 8 }}>{proc.channels === 1 ? 'CHANNEL' : 'CHANNELS'}</div>
         </div>
         <div style={{ width: 1, height: 50, background: 'rgba(255,255,255,0.06)' }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>FORM FACTOR</div>
-            <div style={{ fontSize: 18, fontWeight: 400, color: 'rgba(255,255,255,0.75)', fontFamily: "'Inter', sans-serif" }}>{proc.formFactor || '—'}</div>
+            <div style={{ fontSize: 18, fontWeight: 400, color: 'rgba(255,255,255,0.75)', fontFamily: SANS }}>{proc.formFactor || '—'}</div>
           </div>
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>INTERFACE</div>
-            <div style={{ fontSize: 18, fontWeight: 400, color: 'rgba(255,255,255,0.75)', fontFamily: "'Inter', sans-serif" }}>{proc.interface || '—'}</div>
+            <div style={{ fontSize: 18, fontWeight: 400, color: 'rgba(255,255,255,0.75)', fontFamily: SANS }}>{proc.interface || '—'}</div>
           </div>
         </div>
       </div>
@@ -1694,6 +1706,7 @@ const RESOLUTION_TIERS = [
 
 // ─── CAMERA HERO ─────────────────────────────────────────────
 function CameraHero({ family, model, models, selectedModel, onSelectModel, conn, proc, connType, onConnType, hybridMode }) {
+  const [activeAngle, setActiveAngle] = useState(0);
   if (!model) return null;
   // FPS logic:
   // Dual-capable families (galileo, phoenix-gold, phoenix): spec FPS = dual (2CH) speed, single = half
@@ -1744,9 +1757,8 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
       })),
   ];
 
-  const [activeAngle, setActiveAngle] = useState(0);
-
   const angles = CAM_ANGLES[family.id] || [CAM_IMAGES[family.id]];
+  const heroSrc = angles[activeAngle] || angles[0];
 
   // Find the highest-FPS tier for the hero number
   const maxTier = allTiers.reduce((best, t) => t.fps > best.fps ? t : best, allTiers[0]);
@@ -1755,7 +1767,7 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
     <div style={styles.heroContent}>
       {/* ── 1. NAME — top ── */}
       <div style={{ width: '100%', textAlign: 'center', marginTop: 8, marginBottom: 0, flexShrink: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(232,182,0,0.5)', letterSpacing: '0.14em' }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(77,127,224,0.5)', letterSpacing: '0.14em' }}>
           {getConnectionLabel(family.id, proc?.id, hybridMode) || (family.group === 'fiber' ? 'XSTREAM FIBER' : (family.hybrid && hybridMode === 'ethernet') ? 'ETHERNET' : family.group === 'compact' ? 'XSTREAM USB-C' : 'ETHERNET')}
         </div>
         <div style={{ fontSize: 38, fontWeight: 300, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.1, marginTop: 4 }}>
@@ -1765,8 +1777,8 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
 
       {/* ── 2. HERO IMAGE — centered, tight crop ── */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', flexShrink: 0 }}>
-        <div style={{ width: 560, height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-          <img src={angles[activeAngle]} alt={family.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.5))', transform: 'scale(1.1)' }} />
+        <div style={{ width: 'min(560px, 100%)', height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+          <img src={heroSrc} alt={family.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.5))', transform: 'scale(1.1)' }} />
         </div>
       </div>
 
@@ -1777,7 +1789,7 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
             ...styles.thumbBtn, width: 64, height: 64,
             ...(activeAngle === i ? styles.thumbBtnActive : {}),
           }}>
-            <img src={src} alt={`View ${i + 1}`} style={styles.thumbImg} />
+            <img src={src} alt={`View ${i + 1}`} loading="lazy" decoding="async" style={styles.thumbImg} />
           </button>
         ))}
       </div>
@@ -1820,7 +1832,7 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
         <span style={{
           fontSize: 13, fontWeight: 600, letterSpacing: '0.06em',
           color: isDualMode ? '#4080D0' : 'rgba(255,255,255,0.4)',
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: MONO,
         }}>
           {isDualMode ? `DUAL${connType === 'dual2' ? ' ×2' : ''} · ${cameraCount === 1 ? '1 camera' : `${cameraCount} cameras`} · FULL FPS` : connType === 'multi' ? `${cameraCount}× SINGLE · ${cameraCount} cameras${isDualCapable ? ' · ⚠ HALF FPS' : ''}` : `SINGLE · ${cameraCount} camera${isDualCapable ? ' · ⚠ HALF FPS' : ''}`}
         </span>
@@ -1831,9 +1843,9 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
         width: '100%', maxWidth: 640,
         flexShrink: 0,
         margin: '8px auto 0',
-        border: '1px solid rgba(232,182,0,0.25)',
+        border: '1px solid rgba(77,127,224,0.25)',
         borderRadius: 10,
-        background: 'linear-gradient(180deg, rgba(232,182,0,0.04) 0%, rgba(0,0,0,0.3) 100%)',
+        background: 'linear-gradient(180deg, rgba(77,127,224,0.04) 0%, rgba(0,0,0,0.3) 100%)',
         padding: '16px 36px 14px',
       }}>
         {allTiers.map((tier, idx) => {
@@ -1843,8 +1855,8 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
             ? (tierCount === 1 ? 88 : 32)
             : isLast ? 88 : 32 + Math.round((idx / Math.max(tierCount - 1, 1)) * 48);
           const fpsColor = tier.isNative
-            ? (tierCount === 1 ? '#E8B600' : 'rgba(255,255,255,0.45)')
-            : isLast ? '#E8B600' : `rgba(255,255,255,${0.35 + (idx / Math.max(tierCount - 1, 1)) * 0.5})`;
+            ? (tierCount === 1 ? '#4d7fe0' : 'rgba(255,255,255,0.45)')
+            : isLast ? '#4d7fe0' : `rgba(255,255,255,${0.35 + (idx / Math.max(tierCount - 1, 1)) * 0.5})`;
           const fpsWeight = (isLast || tierCount === 1) ? 600 : 400;
           return (
             <div key={tier.label} style={{
@@ -1857,36 +1869,41 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
                 <span style={{
                   display: 'inline-block', padding: '3px 10px', borderRadius: 4,
                   fontSize: 13, fontWeight: 700, letterSpacing: '0.1em',
-                  background: tier.isNative ? 'rgba(232,182,0,0.18)' : 'rgba(255,255,255,0.05)',
-                  color: tier.isNative ? '#E8B600' : 'rgba(255,255,255,0.4)',
+                  background: tier.isNative ? 'rgba(77,127,224,0.18)' : 'rgba(255,255,255,0.05)',
+                  color: tier.isNative ? '#4d7fe0' : 'rgba(255,255,255,0.4)',
                   minWidth: 42, textAlign: 'center',
                 }}>
                   {tier.label}
                 </span>
                 <span style={{
                   fontSize: 14, color: 'rgba(255,255,255,0.2)',
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: MONO,
                 }}>
-                  {tier.res}
+                  {tier.res}{!tier.isNative && ' · est.'}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
                 <span style={{
                   fontSize: fpsSize, fontWeight: fpsWeight, letterSpacing: '-0.04em',
-                  color: fpsColor, fontFamily: "'JetBrains Mono', monospace",
+                  color: fpsColor, fontFamily: MONO,
                   lineHeight: 1,
                 }}>
                   {tier.fps.toLocaleString()}
                 </span>
                 <span style={{
                   fontSize: (isLast && tierCount > 1) ? 20 : 14,
-                  color: (isLast || tierCount === 1) ? 'rgba(232,182,0,0.5)' : 'rgba(255,255,255,0.2)',
+                  color: (isLast || tierCount === 1) ? 'rgba(77,127,224,0.5)' : 'rgba(255,255,255,0.2)',
                   fontWeight: 400,
                 }}>fps</span>
               </div>
             </div>
           );
         })}
+        {allTiers.length > 1 && (
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', textAlign: 'center', marginTop: 8, letterSpacing: '0.04em' }}>
+            est. = windowed rate extrapolated from the native frame rate · confirm against the IDT spec sheet
+          </div>
+        )}
       </div>
 
       {/* ── 6. Specs — 3×2 grid in boxes, aligned with FPS box ── */}
@@ -1906,7 +1923,7 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
             background: 'rgba(255,255,255,0.02)',
           }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.14em', marginBottom: 6 }}>{s.label}</div>
-            <div style={{ fontSize: 18, fontWeight: 500, color: 'rgba(255,255,255,0.85)', fontFamily: "'JetBrains Mono', monospace", whiteSpace: 'nowrap' }}>{s.value}</div>
+            <div style={{ fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.85)', fontFamily: MONO, overflowWrap: 'anywhere' }}>{s.value}</div>
           </div>
         ))}
       </div>
@@ -1916,6 +1933,7 @@ function CameraHero({ family, model, models, selectedModel, onSelectModel, conn,
 
 // ─── MOBILE CAMERA DETAIL ────────────────────────────────────
 function MobileCameraDetail({ family, model, models, selectedModel, onSelectModel, conn, proc, connType, onConnType }) {
+  const [activeAngle, setActiveAngle] = useState(0);
   if (!model) return null;
   const rawFps = parseInt(model.fps.replace(/,/g, ''), 10);
   const isDualCapable = family.dualConnection === true;
@@ -1939,14 +1957,14 @@ function MobileCameraDetail({ family, model, models, selectedModel, onSelectMode
   ];
   const maxTier = allTiers.reduce((best, t) => t.fps > best.fps ? t : best, allTiers[0]);
 
-  const [activeAngle, setActiveAngle] = useState(0);
   const angles = CAM_ANGLES[family.id] || [CAM_IMAGES[family.id]];
+  const heroSrc = angles[activeAngle] || angles[0];
 
   return (
     <div style={{ padding: '16px 16px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
       {/* Name */}
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(232,182,0,0.5)', letterSpacing: '0.14em' }}>
+        <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(77,127,224,0.5)', letterSpacing: '0.14em' }}>
           {family.group === 'fiber' ? 'XSTREAM FIBER' : family.group === 'compact' ? 'XSTREAM USB-C' : 'ETHERNET'}
         </div>
         <div style={{ fontSize: 28, fontWeight: 300, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.1, marginTop: 2 }}>
@@ -1956,7 +1974,7 @@ function MobileCameraDetail({ family, model, models, selectedModel, onSelectMode
 
       {/* Hero Image */}
       <div style={{ width: '100%', height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <img src={angles[activeAngle]} alt={family.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.5))' }} />
+        <img src={heroSrc} alt={family.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.5))' }} />
       </div>
 
       {/* Thumbnails */}
@@ -1964,8 +1982,8 @@ function MobileCameraDetail({ family, model, models, selectedModel, onSelectMode
         {angles.map((src, i) => (
           <button key={i} onClick={() => setActiveAngle(i)} style={{
             width: 48, height: 48, borderRadius: 6, padding: 2,
-            border: activeAngle === i ? '1px solid rgba(232,182,0,0.4)' : '1px solid rgba(255,255,255,0.06)',
-            background: activeAngle === i ? 'rgba(232,182,0,0.03)' : 'transparent',
+            border: activeAngle === i ? '1px solid rgba(77,127,224,0.4)' : '1px solid rgba(255,255,255,0.06)',
+            background: activeAngle === i ? 'rgba(77,127,224,0.03)' : 'transparent',
             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <img src={src} alt={`View ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -1978,11 +1996,11 @@ function MobileCameraDetail({ family, model, models, selectedModel, onSelectMode
         <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
           {models.map(m => (
             <button key={m.id} onClick={() => onSelectModel(m.id)} style={{
-              background: selectedModel === m.id ? 'rgba(232,182,0,0.08)' : 'transparent',
-              border: selectedModel === m.id ? '1px solid #E8B600' : '1px solid rgba(255,255,255,0.12)',
-              color: selectedModel === m.id ? '#E8B600' : 'rgba(255,255,255,0.45)',
+              background: selectedModel === m.id ? 'rgba(77,127,224,0.08)' : 'transparent',
+              border: selectedModel === m.id ? '1px solid #4d7fe0' : '1px solid rgba(255,255,255,0.12)',
+              color: selectedModel === m.id ? '#4d7fe0' : 'rgba(255,255,255,0.45)',
               fontSize: 11, fontWeight: 500, padding: '5px 14px', borderRadius: 20,
-              cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.02em',
+              cursor: 'pointer', fontFamily: MONO, letterSpacing: '0.02em',
             }}>
               {m.name}
             </button>
@@ -1997,11 +2015,11 @@ function MobileCameraDetail({ family, model, models, selectedModel, onSelectMode
             const isAct = connType === ct;
             return (
               <button key={ct} onClick={() => onConnType(ct)} style={{
-                padding: '5px 14px', border: `1px solid ${isAct ? 'rgba(232,182,0,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                borderRadius: 4, cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace",
-                background: isAct ? 'rgba(232,182,0,0.08)' : 'transparent', marginRight: -1,
+                padding: '5px 14px', border: `1px solid ${isAct ? 'rgba(77,127,224,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                borderRadius: 4, cursor: 'pointer', fontFamily: MONO,
+                background: isAct ? 'rgba(77,127,224,0.08)' : 'transparent', marginRight: -1,
               }}>
-                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: isAct ? '#E8B600' : 'rgba(255,255,255,0.4)' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: isAct ? '#4d7fe0' : 'rgba(255,255,255,0.4)' }}>
                   {ct === 'dual' ? 'DUAL' : 'SINGLE'}
                 </span>
               </button>
@@ -2012,14 +2030,14 @@ function MobileCameraDetail({ family, model, models, selectedModel, onSelectMode
 
       {/* FPS Hero Number */}
       <div style={{ textAlign: 'center', margin: '8px 0' }}>
-        <div style={{ fontSize: 56, fontWeight: 600, color: '#E8B600', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '-0.04em', lineHeight: 1 }}>
+        <div style={{ fontSize: 56, fontWeight: 600, color: '#4d7fe0', fontFamily: MONO, letterSpacing: '-0.04em', lineHeight: 1 }}>
           {maxTier.fps.toLocaleString()}
         </div>
-        <div style={{ fontSize: 14, color: 'rgba(232,182,0,0.5)', fontWeight: 400 }}>fps @ {maxTier.label}</div>
+        <div style={{ fontSize: 14, color: 'rgba(77,127,224,0.5)', fontWeight: 400 }}>fps @ {maxTier.label}</div>
       </div>
 
       {/* FPS Tiers */}
-      <div style={{ width: '100%', border: '1px solid rgba(232,182,0,0.2)', borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ width: '100%', border: '1px solid rgba(77,127,224,0.2)', borderRadius: 8, overflow: 'hidden' }}>
         {allTiers.map((tier, idx) => (
           <div key={tier.label} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -2030,17 +2048,22 @@ function MobileCameraDetail({ family, model, models, selectedModel, onSelectMode
               <span style={{
                 display: 'inline-block', padding: '2px 8px', borderRadius: 3,
                 fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
-                background: tier.isNative ? 'rgba(232,182,0,0.18)' : 'rgba(255,255,255,0.05)',
-                color: tier.isNative ? '#E8B600' : 'rgba(255,255,255,0.4)', minWidth: 36, textAlign: 'center',
+                background: tier.isNative ? 'rgba(77,127,224,0.18)' : 'rgba(255,255,255,0.05)',
+                color: tier.isNative ? '#4d7fe0' : 'rgba(255,255,255,0.4)', minWidth: 36, textAlign: 'center',
               }}>{tier.label}</span>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', fontFamily: "'JetBrains Mono', monospace" }}>{tier.res}</span>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', fontFamily: MONO }}>{tier.res}{!tier.isNative && ' · est.'}</span>
             </div>
-            <span style={{ fontSize: 16, fontWeight: 600, color: 'rgba(255,255,255,0.7)', fontFamily: "'JetBrains Mono', monospace" }}>
+            <span style={{ fontSize: 16, fontWeight: 600, color: 'rgba(255,255,255,0.7)', fontFamily: MONO }}>
               {tier.fps.toLocaleString()} <span style={{ fontSize: 11, fontWeight: 400, color: 'rgba(255,255,255,0.3)' }}>fps</span>
             </span>
           </div>
         ))}
       </div>
+      {allTiers.length > 1 && (
+        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', textAlign: 'center', marginTop: -4 }}>
+          est. = windowed rate extrapolated from native · confirm against the IDT spec sheet
+        </div>
+      )}
 
       {/* Specs Grid — 2×3 */}
       <div style={{ width: '100%', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 0, marginTop: 4 }}>
@@ -2057,7 +2080,7 @@ function MobileCameraDetail({ family, model, models, selectedModel, onSelectMode
             border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)',
           }}>
             <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.12em', marginBottom: 4 }}>{s.label}</div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.85)', fontFamily: "'JetBrains Mono', monospace", whiteSpace: 'nowrap' }}>{s.value}</div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.85)', fontFamily: MONO, whiteSpace: 'nowrap' }}>{s.value}</div>
           </div>
         ))}
       </div>
@@ -2067,7 +2090,7 @@ function MobileCameraDetail({ family, model, models, selectedModel, onSelectMode
 
 // ─── FEATURE COLORS ─────────────────────────────────────────
 const FEATURE_COLORS = {
-  resolution: '#E8B600',   // gold
+  resolution: '#4d7fe0',   // gold
   dual:      '#00BCD4',    // cyan
   depth:     '#AB47BC',    // purple
   mount:     '#FF7043',    // orange
@@ -2158,7 +2181,7 @@ function ComparisonTable({ catalog, selectedFamily }) {
           return (
             <button key={g.groupId} onClick={() => { setActiveGroup(g.groupId); setPinned([]); setSortKey(null); setSortDir('desc'); }} style={{
               padding: '10px 24px', border: `1px solid ${isAct ? gColor + '60' : 'rgba(255,255,255,0.08)'}`,
-              borderRadius: 4, cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace",
+              borderRadius: 4, cursor: 'pointer', fontFamily: MONO,
               background: isAct ? gColor + '15' : 'transparent',
               color: isAct ? gColor : 'rgba(255,255,255,0.35)',
               fontSize: 13, fontWeight: 800, letterSpacing: '0.12em', marginRight: -1,
@@ -2169,9 +2192,9 @@ function ComparisonTable({ catalog, selectedFamily }) {
         })}
         {pinned.length > 0 && (
           <button onClick={() => setPinned([])} style={{
-            marginLeft: 'auto', padding: '10px 18px', border: '1px solid rgba(232,182,0,0.3)',
-            borderRadius: 4, cursor: 'pointer', fontFamily: "'JetBrains Mono', monospace",
-            background: 'rgba(232,182,0,0.08)', color: '#E8B600',
+            marginLeft: 'auto', padding: '10px 18px', border: '1px solid rgba(77,127,224,0.3)',
+            borderRadius: 4, cursor: 'pointer', fontFamily: MONO,
+            background: 'rgba(77,127,224,0.08)', color: '#4d7fe0',
             fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
           }}>
             CLEAR PINS ({pinned.length})
@@ -2181,18 +2204,18 @@ function ComparisonTable({ catalog, selectedFamily }) {
 
       {/* Pinned side-by-side comparison */}
       {pinnedRows.length >= 2 && (
-        <div style={{ marginBottom: 24, borderRadius: 8, border: `1px solid #E8B60040`, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 20px', background: 'rgba(232,182,0,0.06)', borderBottom: '1px solid rgba(232,182,0,0.15)' }}>
-            <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', color: '#E8B600', fontFamily: "'JetBrains Mono', monospace" }}>SIDE-BY-SIDE</span>
+        <div style={{ marginBottom: 24, borderRadius: 8, border: `1px solid #4d7fe040`, overflow: 'hidden' }}>
+          <div style={{ padding: '12px 20px', background: 'rgba(77,127,224,0.06)', borderBottom: '1px solid rgba(77,127,224,0.15)' }}>
+            <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', color: '#4d7fe0', fontFamily: MONO }}>SIDE-BY-SIDE</span>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: 'rgba(232,182,0,0.03)' }}>
+              <tr style={{ background: 'rgba(77,127,224,0.03)' }}>
                 <th style={{ width: 140, padding: '12px 16px', textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.06)', borderRight: '1px solid rgba(255,255,255,0.06)' }} />
                 {pinnedRows.map(r => (
                   <th key={r.model.id} style={{ padding: '12px 16px', textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
                     <img src={CAM_IMAGES[r.family.id]} alt={r.model.fullName} style={{ width: 56, height: 56, objectFit: 'contain', opacity: 0.85, marginBottom: 4 }} />
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#E8B600', whiteSpace: 'nowrap' }}>{r.model.fullName}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#4d7fe0', whiteSpace: 'nowrap' }}>{r.model.fullName}</div>
                   </th>
                 ))}
               </tr>
@@ -2205,7 +2228,7 @@ function ComparisonTable({ catalog, selectedFamily }) {
                     const val = spec.format(r.model, r.family);
                     const isDot = spec.isDot && val === '●';
                     return (
-                      <td key={r.model.id} style={{ padding: '10px 16px', textAlign: 'center', fontSize: isDot ? 20 : 14, fontWeight: 500, color: isDot ? (spec.color || gc) : val === '—' ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.75)', fontFamily: "'JetBrains Mono', monospace", borderRight: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{val}</td>
+                      <td key={r.model.id} style={{ padding: '10px 16px', textAlign: 'center', fontSize: isDot ? 20 : 14, fontWeight: 500, color: isDot ? (spec.color || gc) : val === '—' ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.75)', fontFamily: MONO, borderRight: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{val}</td>
                     );
                   })}
                 </tr>
@@ -2224,15 +2247,15 @@ function ComparisonTable({ catalog, selectedFamily }) {
                 <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>PIN</span>
               </th>
               <th style={{ padding: '10px 8px', textAlign: 'left', borderBottom: `2px solid ${gc}30`, borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', color: gc, fontFamily: "'JetBrains Mono', monospace" }}>MODEL</span>
+                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', color: gc, fontFamily: MONO }}>MODEL</span>
               </th>
               {SPEC_COLS.map(spec => {
                 const isSorted = sortKey === spec.key;
                 return (
                   <th key={spec.key} onClick={() => handleSort(spec.key)} style={{
                     padding: '10px 6px', textAlign: 'center', borderBottom: `2px solid ${gc}30`, borderRight: '1px solid rgba(255,255,255,0.06)',
-                    fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: isSorted ? '#E8B600' : spec.color || 'rgba(255,255,255,0.35)',
-                    cursor: 'pointer', userSelect: 'none', background: isSorted ? 'rgba(232,182,0,0.06)' : 'transparent',
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: isSorted ? '#4d7fe0' : spec.color || 'rgba(255,255,255,0.35)',
+                    cursor: 'pointer', userSelect: 'none', background: isSorted ? 'rgba(77,127,224,0.06)' : 'transparent',
                   }}>
                     {spec.label} {isSorted ? (sortDir === 'desc' ? '▼' : '▲') : ''}
                   </th>
@@ -2263,21 +2286,21 @@ function ComparisonTable({ catalog, selectedFamily }) {
                     </tr>
                   )}
                   <tr style={{
-                    background: isPinned ? 'rgba(232,182,0,0.06)' : isSel ? `${gc}06` : ri % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent',
+                    background: isPinned ? 'rgba(77,127,224,0.06)' : isSel ? `${gc}06` : ri % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent',
                     cursor: 'pointer',
                   }} onClick={() => togglePin(row.model.id)}>
                     <td style={{ padding: '8px 4px', textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                       <div style={{
                         width: 18, height: 18, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto',
-                        border: isPinned ? '2px solid #E8B600' : '1px solid rgba(255,255,255,0.15)',
-                        background: isPinned ? 'rgba(232,182,0,0.15)' : 'transparent',
-                        fontSize: 11, color: '#E8B600',
+                        border: isPinned ? '2px solid #4d7fe0' : '1px solid rgba(255,255,255,0.15)',
+                        background: isPinned ? 'rgba(77,127,224,0.15)' : 'transparent',
+                        fontSize: 11, color: '#4d7fe0',
                       }}>
                         {isPinned ? '✓' : ''}
                       </div>
                     </td>
                     <td style={{ padding: '10px 10px', borderRight: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.04)', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: isPinned ? '#E8B600' : 'rgba(255,255,255,0.8)' }}>{row.model.fullName}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: isPinned ? '#4d7fe0' : 'rgba(255,255,255,0.8)' }}>{row.model.fullName}</span>
                     </td>
                     {SPEC_COLS.map(spec => {
                       const val = spec.format(row.model, row.family);
@@ -2286,11 +2309,11 @@ function ComparisonTable({ catalog, selectedFamily }) {
                         <td key={spec.key} style={{
                           padding: '10px 6px', textAlign: 'center',
                           fontSize: isDot ? 18 : 12, fontWeight: sortKey === spec.key ? 600 : (isDot ? 400 : 500),
-                          color: isDot ? (spec.color || gc) : val === '—' ? 'rgba(255,255,255,0.15)' : sortKey === spec.key ? '#E8B600' : 'rgba(255,255,255,0.7)',
-                          fontFamily: "'JetBrains Mono', monospace",
+                          color: isDot ? (spec.color || gc) : val === '—' ? 'rgba(255,255,255,0.15)' : sortKey === spec.key ? '#4d7fe0' : 'rgba(255,255,255,0.7)',
+                          fontFamily: MONO,
                           borderRight: '1px solid rgba(255,255,255,0.06)',
                           borderBottom: '1px solid rgba(255,255,255,0.04)',
-                          background: sortKey === spec.key ? 'rgba(232,182,0,0.04)' : 'transparent',
+                          background: sortKey === spec.key ? 'rgba(77,127,224,0.04)' : 'transparent',
                           whiteSpace: 'nowrap',
                         }}>{val}</td>
                       );
@@ -2314,7 +2337,7 @@ const styles = {
     width: '100%',
     height: isEmbed ? '100vh' : undefined,
     background: '#0A0A0A',
-    fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+    fontFamily: SANS,
     color: '#fff',
     display: 'flex',
     flexDirection: 'column',
@@ -2340,11 +2363,10 @@ const styles = {
     gap: 10,
   },
   logo: {
-    fontFamily: "'JetBrains Mono', monospace",
-    fontSize: 18,
-    fontWeight: 700,
-    color: '#E8B600',
-    letterSpacing: '0.08em',
+    fontSize: 17,
+    fontWeight: 500,
+    color: '#ece8df',
+    letterSpacing: '0.02em',
   },
   logoSub: {
     fontSize: 11,
@@ -2375,7 +2397,7 @@ const styles = {
 
   // Strips
   strip: {
-    flex: '0 0 280px',
+    flex: '0 0 clamp(220px, 19vw, 280px)',
     borderRight: '1px solid rgba(255,255,255,0.15)',
     background: '#0D0D0D',
     overflowY: 'auto',
@@ -2396,7 +2418,7 @@ const styles = {
     background: 'transparent',
     border: 'none',
     cursor: 'pointer',
-    padding: '36px 24px',
+    padding: '24px 20px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -2410,7 +2432,7 @@ const styles = {
     background: 'transparent',
     border: 'none',
     cursor: 'pointer',
-    padding: '32px 24px',
+    padding: '22px 20px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -2423,7 +2445,7 @@ const styles = {
   cellGlow: {
     position: 'absolute',
     inset: 0,
-    background: 'radial-gradient(ellipse at 60% 40%, rgba(232,182,0,0.06), transparent 70%)',
+    background: 'radial-gradient(ellipse at 60% 40%, rgba(77,127,224,0.06), transparent 70%)',
     pointerEvents: 'none',
   },
 
@@ -2479,10 +2501,10 @@ const styles = {
     fontSize: 15,
     fontWeight: 500,
     color: 'rgba(255,255,255,0.7)',
-    fontFamily: "'JetBrains Mono', monospace",
+    fontFamily: MONO,
   },
   chainArrow: {
-    color: '#E8B600',
+    color: '#4d7fe0',
     fontSize: 16,
     opacity: 0.5,
   },
@@ -2513,7 +2535,7 @@ const styles = {
     gap: 8,
   },
   emptyArrow: {
-    color: 'rgba(232,182,0,0.2)',
+    color: 'rgba(77,127,224,0.2)',
     fontSize: 14,
   },
   emptyStep: {
@@ -2525,7 +2547,7 @@ const styles = {
   },
   emptyStepNum: {
     fontSize: 13,
-    color: 'rgba(232,182,0,0.4)',
+    color: 'rgba(77,127,224,0.4)',
     letterSpacing: '0.1em',
     marginBottom: 4,
   },
@@ -2542,8 +2564,9 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     gap: 0,
-    padding: '8px 48px 32px',
+    padding: '8px clamp(16px, 3vw, 48px) 32px',
     overflowY: 'auto',
+    minWidth: 0,
   },
   heroIdentity: {
     textAlign: 'center',
@@ -2553,7 +2576,7 @@ const styles = {
   heroTagline: {
     fontSize: 16,
     fontWeight: 600,
-    color: 'rgba(232,182,0,0.55)',
+    color: 'rgba(77,127,224,0.55)',
     letterSpacing: '0.16em',
     marginBottom: 4,
   },
@@ -2609,8 +2632,8 @@ const styles = {
     transition: 'all 0.15s',
   },
   thumbBtnActive: {
-    borderColor: 'rgba(232,182,0,0.4)',
-    background: 'rgba(232,182,0,0.03)',
+    borderColor: 'rgba(77,127,224,0.4)',
+    background: 'rgba(77,127,224,0.03)',
   },
   thumbImg: {
     width: '100%',
@@ -2670,7 +2693,7 @@ const styles = {
     fontSize: 72,
     fontWeight: 200,
     color: '#fff',
-    fontFamily: "'JetBrains Mono', monospace",
+    fontFamily: MONO,
     letterSpacing: '-0.04em',
     lineHeight: 1,
   },
@@ -2678,7 +2701,7 @@ const styles = {
     fontSize: 30,
     fontWeight: 200,
     color: 'rgba(255,255,255,0.7)',
-    fontFamily: "'JetBrains Mono', monospace",
+    fontFamily: MONO,
     letterSpacing: '-0.04em',
     lineHeight: 1,
   },
@@ -2722,7 +2745,7 @@ const styles = {
     fontSize: 13,
     fontWeight: 400,
     color: 'rgba(255,255,255,0.8)',
-    fontFamily: "'JetBrains Mono', monospace",
+    fontFamily: MONO,
     lineHeight: 1.3,
   },
 
@@ -2746,13 +2769,13 @@ const styles = {
     padding: '8px 24px',
     borderRadius: 24,
     cursor: 'pointer',
-    fontFamily: "'JetBrains Mono', monospace",
+    fontFamily: MONO,
     transition: 'all 0.2s',
     letterSpacing: '0.02em',
   },
   modelPillActive: {
-    borderColor: '#E8B600',
-    color: '#E8B600',
-    background: 'rgba(232,182,0,0.08)',
+    borderColor: '#4d7fe0',
+    color: '#4d7fe0',
+    background: 'rgba(77,127,224,0.08)',
   },
 };

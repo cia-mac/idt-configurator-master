@@ -1,9 +1,60 @@
 ---
-workflow_step: post_migration_repo_cleaned_4_commits_unpushed
+workflow_step: audit_debug_gui_cleanup_unverified_visually
 agent_type: execute
 token_budget: deep
-last_updated: 2026-05-19
+last_updated: 2026-10-11
 ---
+## 2026-10-11 EXIT - Audit and debug of ciamac.com/idt configurator, GUI cleanup (OPEN)
+
+Snapshot before this block: none (append only).
+Audited the configurator behind ciamac.com/idt (case study; never accepted or paid by IDT). Fixed logic bugs and layout in this lane's source. Nothing committed, pushed or deployed. Visual check of the new build not done: the dev server could not be started until the folder switch took effect.
+
+### Done
+- [observed] Reproduced on the live page: Helios 8K² + RT III Compact selectable together despite the catalog restriction (chain bar read "Helios 8K² -> RT III Compact"); evidence: browser pane on https://ciamac.com/idt, 2026-10-11. Fixed in src/App.jsx (selectProcessor, selectFamily, availableProcs, availableFamilies, mobile click guard).
+- [observed] Fixed: mobile detail kept the previous camera's thumbnail index (SugarCube has 1 angle, others 5-6) -> key on family + fallback to angles[0]; hooks-order violation in CameraHero and MobileCameraDetail (useState after early return); connectionModes useMemo missing hybridModes dep. Evidence: git diff src/App.jsx.
+- [observed] Windowed FPS rows now tagged "est." with a footnote (live page headlined 683 fps for Helios 8K², native 90 fps; formula in CameraHero is rawFps * nativeH / tierHeight, not a spec).
+- [observed] Layout: desktop breakpoint 768 -> 1180 (DESKTOP_MIN_WIDTH), strip widths clamp(220px,19vw,280px), group headers 28 -> 18px, cell padding reduced, spec grid wraps. Evidence: diff. NOT visually verified.
+- [observed] Weight: sugarcube-alt.png 19.7 MB (6666x5000 16-bit) -> 249 KB 1600px, original kept at _unshipped/originals/sugarcube-alt_v1_6666x5000.png; unreferenced public/images/renders (92 MB) moved to _unshipped/renders_v1. Evidence: ls, du.
+- [observed] PWA manifest start_url/scope pointed at /idt-configurator-live/ (dead path on ciamac.com/idt) and icon paths 404 from the hashed asset folder; manifest.json now uses ../ paths. Evidence: live manifest-BNB_gD3I.json content.
+- [observed] package.json had no test script (CLAUDE.md referenced npm test); added "test": "node --test tests/constraints.test.js". 102/102 pass, build ok (stamp below).
+- [inferred] tests/constraints.test.js reimplements the rules as pure functions instead of importing App.jsx, so it could not catch the Helios/RT III order bug; inferred from reading the test header and the passing suite alongside the live repro.
+
+### Previous pending
+- carried: none beyond below
+- done: wire up test runner (no test script) -> test script added this session
+- done: push the 4 unpushed commits -> stamp shows upstream ahead 0 (the push happened at some point)
+
+### Pending / open
+- Visual check of the new build in the browser at 1280, 1440, 1920 and a tablet width (needs the master-engine dev server from this folder).
+- Live copy at ~/Developer/ciamac-site/deploy/idt is a different build (index-h2hAGM0p.js, base /idt/) and is NOT updated. Rebuilding with --base=/idt/ and deploying needs Cia's explicit go and the DEPLOY.md flow. The deployed folder is 270 MB.
+- Open data questions for IDT: RT III shows an XSLink hub for USB-C cameras although catalog has directUsbc:2; CLAUDE.md says TC processors pair only with Phoenix HD/UHD but code and tests allow all fiber cameras; Helios 8K² note says 8Kx6K@120fps vs fps 90; CLAUDE.md says incompatible cameras are hidden but code greys them.
+
+### Operational notes
+- LANES.md has no row for the Site /idt surface; the lane maps to idt-configurator-master (row truncated in the table).
+- sips cannot write inside the sandbox temp; PIL worked.
+- vite.config.js base is /idt-configurator-master/ (frozen); the live /idt build was made with a different base.
+
+### Durable thought
+none, reason: findings are specific to this archived engine and recorded here.
+
+### Repo state
+
+Computed by `exit-stamp` at 2026-10-11T17:52:28-07:00. Do not edit by hand; re-run it.
+
+- repo: `~/Developer/archive/idt-configurator-master`
+- branch: `main`
+- HEAD: `abe6c35 chore: sync package-lock.json version field to 2.0.0` (committed 2026-05-19)
+- tree: **95 uncommitted change(s)**
+- upstream: origin/main (ahead 0, behind 0)
+- merged into HEAD: none
+- NOT merged into HEAD: none
+- test: `npm test` -> exit 0: # duration_ms 77.269125
+
+### Why we stopped
+Visual verification needs the dev server; deploy needs Cia's go.
+
+---
+
 
 # SESSION_STATE.md -- IDT Configurator (Master Engine)
 
