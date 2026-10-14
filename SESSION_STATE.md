@@ -26,7 +26,6 @@ Follow-up to the closing block above. Updated this lane's CLAUDE.md, pushed the 
 
 ### Pending / open
 - This block's own commit is local (SESSION_STATE.md); push needs Cia's go.
-- The stage deploy also published another session's uncommitted deploy/ changes (including /adam pages) to the stage URL; those pages were not checked.
 - Cia to rule on the TC pairing rule and the RT III hub question (CLAUDE.md OPEN lines).
 
 ### Operational notes
