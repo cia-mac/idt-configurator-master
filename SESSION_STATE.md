@@ -1,9 +1,61 @@
 ---
-workflow_step: idt_configurator_deployed_live_d15f53c
+workflow_step: idt_claude_md_pushed_stage_deployed
 agent_type: execute
 token_budget: deep
 last_updated: 2026-10-13
 ---
+## 2026-10-13 EXIT (2) - CLAUDE.md for v2.0.1, lane repo pushed, new /idt build on stage and deployed there (CLOSED)
+
+Snapshot before this block: none (append only).
+Follow-up to the closing block above. Updated this lane's CLAUDE.md, pushed the lane repo, put the new build into the stage clone, and deployed the stage site, each on Cia's explicit go.
+
+### Done
+- [observed] CLAUDE.md rewritten for v2.0.1 (case-study status, ciamac.com/idt deploy sequence, corrected rules, OPEN items); previous copy kept as CLAUDE_v_2026-10-13_pre_v2.0.1.md; commit ebaea2b.
+- [observed] Lane repo pushed to cia-mac/idt-configurator-master: abe6c35..c04c279, then c04c279..ebaea2b (git push output); `git status -sb` read level with origin at that time.
+- [observed] Stage clone deploy/idt synced from the live clone build (identical, diff -rq empty), committed path-limited as 7c1987f; a session working in that clone then merged and pushed stage, so origin/stage contains 7c1987f and its deploy/idt equals the live build (git archive diff).
+- [observed] My own merge of origin/stage (only conflict: SESSION_STATE.md, resolved by keeping both sides' blocks) was built in a temp worktree and never pushed, because origin/stage moved first; worktree and branch tmp-stage-merge deleted.
+- [observed] Stage site deployed from ~/Developer/ciamac-site-stage/deploy (HEAD fd68cc5 plus 24 modified and 3 untracked files from another session): https://ciamac-site-stage.vercel.app/idt 200 with index-rvUYfdqy.js, sugarcube-alt 248973 B, renders 404.
+
+### Previous pending
+- done: push this lane's two commits -> pushed (above)
+- done: CLAUDE.md still describes the old version -> updated (above)
+- done: stage clone deploy/idt old build -> synced and deployed on stage
+- carried: IDT spec sheet for the est. fps rows; four data questions, now written into CLAUDE.md as OPEN (TC pairing, RT III hub, Helios note, hidden vs greyed resolved in docs)
+- carried: preview tool reads another launch.json than this lane's master-engine entry
+- dropped: guardrail "do not expose the guided configurator to Luiz" is moot; left in CLAUDE.md for Cia to drop
+
+### Pending / open
+- This block's own commit is local (SESSION_STATE.md); push needs Cia's go.
+- The stage deploy also published another session's uncommitted deploy/ changes (including /adam pages) to the stage URL; those pages were not checked.
+- Cia to rule on the TC pairing rule and the RT III hub question (CLAUDE.md OPEN lines).
+
+### Operational notes
+- Two sessions were working in the stage clone at once; origin/stage moved twice within minutes. Check `git fetch` immediately before any push there.
+- Session Log row for this session already exists (2026-10-13 row, filed in the closing block); not duplicated.
+
+### Durable thought
+none, reason: nothing new beyond what the blocks and CLAUDE.md now record.
+
+### Repo state
+
+Computed by `exit-stamp` at 2026-10-13T18:48:40-07:00. Do not edit by hand; re-run it.
+
+- repo: `~/Developer/archive/idt-configurator-master`
+- branch: `main`
+- HEAD: `ebaea2b docs: CLAUDE.md for v2.0.1 (case study status, ciamac.com/idt deploy, corrected rules, open questions)` (committed 2026-10-13)
+- tree: clean
+- upstream: origin/main (ahead 0, behind 0)
+- merged into HEAD: none
+- NOT merged into HEAD: none
+- test: `npm test` -> exit 0: # duration_ms 1243.726333
+
+### Why we stopped
+finished
+
+Stage clone at close: ## stage...origin/stage. Live clone at close: ## main...origin/main.
+
+---
+
 ## 2026-10-13 EXIT - Push of the live site repo, session closed (CLOSED)
 
 Snapshot before this block: none (append only).
