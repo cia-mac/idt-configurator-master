@@ -2,8 +2,53 @@
 workflow_step: idt_configurator_deployed_live_d15f53c
 agent_type: execute
 token_budget: deep
-last_updated: 2026-10-11
+last_updated: 2026-10-13
 ---
+## 2026-10-13 EXIT - Push of the live site repo, session closed (CLOSED)
+
+Snapshot before this block: none (append only).
+Closing block. After the deploy block was written, Cia said "go" and the live site repo was pushed; this records that and closes the session.
+
+### Done
+- [observed] Pushed ~/Developer/ciamac-site main to origin (b713579..d15f53c), carrying d15f53c (idt) and 6396181 (Theodore sync, already live); evidence: git push output and `git status -sb` afterwards: ## main...origin/main [ahead 2].
+- [observed] Local dev servers on 5177 and 5178 stopped; lsof shows no listeners.
+
+### Previous pending
+- done: Live clone ahead of origin by 2, not pushed -> pushed (Done line above)
+- carried: Stage clone deploy/idt still the old build
+- carried: spec sheet from IDT for "est." windowed fps; four data questions (RT III hub vs directUsbc, TC pairing doc, Helios note, hidden vs greyed docs)
+- carried: this lane's own repo (cia-mac/idt-configurator-master, GitHub Pages) not pushed; commits 22cfea4 and de56098 are local only
+- carried: preview tool reads another launch.json than this lane's master-engine entry
+- dropped: Site SESSION_STATE.md edits in the live clone belong to another session; not mine to resolve
+
+### Pending / open
+- Push this lane's two commits to GitHub only on Cia's go (it would also change the old GitHub Pages deploy).
+- CLAUDE.md in this lane still says v2.0.0, "incompatible cameras are hidden", and the gold/Master Engine framing; not edited this session.
+
+### Operational notes
+- none beyond the previous two blocks.
+
+### Durable thought
+none, reason: nothing new beyond the specifics already in the blocks and commits.
+
+### Repo state
+
+Computed by `exit-stamp` at 2026-10-13T18:10:05-07:00. Do not edit by hand; re-run it.
+
+- repo: `~/Developer/archive/idt-configurator-master`
+- branch: `main`
+- HEAD: `de56098 session_state: 2026-10-11 exit blocks` (committed 2026-10-11)
+- tree: clean
+- upstream: origin/main (ahead 2, behind 0)
+- merged into HEAD: none
+- NOT merged into HEAD: none
+- test: `npm test` -> exit 0: # duration_ms 88.745125
+
+### Why we stopped
+finished
+
+---
+
 ## 2026-10-11 EXIT - IDT System Configurator: verified, branded, deployed to ciamac.com/idt (CLOSED)
 
 Snapshot before this block: none (append only).
